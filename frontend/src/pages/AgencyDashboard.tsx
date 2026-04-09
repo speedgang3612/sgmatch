@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
@@ -99,6 +99,7 @@ const allRiders: Rider[] = [];
 
 export default function AgencyDashboard() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedCity, setSelectedCity] = useState("");
@@ -651,6 +652,7 @@ export default function AgencyDashboard() {
                           <Button
                             variant="outline"
                             className="w-full !bg-transparent border-[#2A2A2A] text-white hover:border-[#E63946] hover:text-[#E63946] rounded-xl text-sm"
+                            onClick={() => navigate("/agency/listings")}
                           >
                             공고 등록하기
                           </Button>

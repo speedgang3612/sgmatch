@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
@@ -30,6 +30,7 @@ import {
   riderMatches,
   riderNotifications,
 } from "@/data/matchData";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSEO } from "@/hooks/useSEO";
 
 type TabView = "find" | "match-status";
@@ -75,9 +76,35 @@ const matchedAgencyNames = riderMatches
   .map((m) => m.agencyName);
 
 function AgencyCard({ agency }: { agency: Agency }) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [bookmarked, setBookmarked] = useState(() => {
+    return localStorage.getItem(`bookmark_${agency.name}`) === "true";
+  });
   const stats = getAgencyStats(agency.name);
   const isMatched = matchedAgencyNames.includes(agency.name);
+
+  // 지원하기 핸들러
+  const handleApply = () => {
+    if (!user) {
+      // 미로그인 시 회원가입 페이지로 이동
+      navigate("/register");
+      return;
+    }
+    setApplying(true);
+    // TODO: 실제 API 연결 시 client.entities.applications.create(...) 호출
+    setTimeout(() => setApplying(false), 2000);
+    alert(`${agency.name}에 지원이 접수되었습니다!\n담당자가 검토 후 연락드립니다.`);
+  };
+
+  // 저장하기 핸들러
+  const handleBookmark = () => {
+    const next = !bookmarked;
+    setBookmarked(next);
+    localStorage.setItem(`bookmark_${agency.name}`, String(next));
+  };
 
   return (
     <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6 hover:border-[#E63946]/50 transition-all duration-300 hover:-translate-y-1">
@@ -155,11 +182,21 @@ function AgencyCard({ agency }: { agency: Agency }) {
       </div>
 
       <div className="flex gap-2 mb-2">
-        <Button className="flex-1 bg-[#E63946] hover:bg-[#FF4D5A] text-white font-bold rounded-xl text-sm">
-          지원하기
+        <Button
+          className="flex-1 bg-[#E63946] hover:bg-[#FF4D5A] text-white font-bold rounded-xl text-sm"
+          onClick={handleApply}
+          disabled={applying}
+        >
+          {applying ? "접수 중..." : "지원하기"}
         </Button>
-        <Button variant="outline" className="!bg-transparent border-[#2A2A2A] text-white hover:border-[#E63946] rounded-xl px-3">
-          <Bookmark size={16} />
+        <Button
+          variant="outline"
+          className={`!bg-transparent border-[#2A2A2A] hover:border-[#E63946] rounded-xl px-3 ${
+            bookmarked ? "text-[#E63946] border-[#E63946]/50" : "text-white"
+          }`}
+          onClick={handleBookmark}
+        >
+          <Bookmark size={16} className={bookmarked ? "fill-[#E63946]" : ""} />
         </Button>
       </div>
 

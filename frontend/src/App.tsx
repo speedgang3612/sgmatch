@@ -16,6 +16,21 @@ const AuthError = lazy(() => import("./pages/AuthError"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 
+// #4 — 새로 생성한 플레이스홀더 페이지 (라우트 미등록 버그 수정)
+const RiderSaved = lazy(() => import("./pages/RiderSaved"));
+const RiderApplications = lazy(() => import("./pages/RiderApplications"));
+const RiderProfile = lazy(() => import("./pages/RiderProfile"));
+const RiderSupport = lazy(() => import("./pages/RiderSupport"));
+const AgencyAnalytics = lazy(() => import("./pages/AgencyAnalytics"));
+const AgencyPromotions = lazy(() => import("./pages/AgencyPromotions"));
+
+// #5 — 기존 파일이지만 라우트가 없던 페이지 (버그 수정)
+const JobListings = lazy(() => import("./pages/JobListings"));
+const BranchRegister = lazy(() => import("./pages/BranchRegister"));
+const RiderRegister = lazy(() => import("./pages/RiderRegister"));
+const Contact = lazy(() => import("./pages/Contact"));
+const LogoutCallbackPage = lazy(() => import("./pages/LogoutCallbackPage"));
+
 // 보호 라우트는 즉시 로드 (가벼운 컴포넌트)
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 
@@ -64,6 +79,24 @@ function App() {
           <Route path="/auth/error" element={<AuthError />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
+
+          {/* #4 — 라이더 서브 페이지 */}
+          <Route path="/rider/saved" element={<RiderSaved />} />
+          <Route path="/rider/applications" element={<RiderApplications />} />
+          <Route path="/rider/profile" element={<RiderProfile />} />
+          <Route path="/rider/support" element={<RiderSupport />} />
+
+          {/* #4 — 지사 서브 페이지 */}
+          <Route path="/agency/analytics" element={<AgencyAnalytics />} />
+          <Route path="/agency/promotions" element={<AgencyPromotions />} />
+
+          {/* #5 — 기존 파일 라우트 등록 */}
+          <Route path="/jobs" element={<JobListings />} />
+          <Route path="/branch/register" element={<BranchRegister />} />
+          <Route path="/rider/register" element={<RiderRegister />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/auth/logout/callback" element={<LogoutCallbackPage />} />
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
