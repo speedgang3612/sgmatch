@@ -23,6 +23,8 @@ const RiderProfile = lazy(() => import("./pages/RiderProfile"));
 const RiderSupport = lazy(() => import("./pages/RiderSupport"));
 const AgencyAnalytics = lazy(() => import("./pages/AgencyAnalytics"));
 const AgencyPromotions = lazy(() => import("./pages/AgencyPromotions"));
+// #20 — 채용 공고 관리 페이지 (지사 관점)
+const AgencyListings = lazy(() => import("./pages/AgencyListings"));
 
 // #5 — 기존 파일이지만 라우트가 없던 페이지 (버그 수정)
 const JobListings = lazy(() => import("./pages/JobListings"));
@@ -58,6 +60,10 @@ function App() {
           <Route path="/rider/*" element={<RiderDashboard />} />
           <Route path="/agency" element={<AgencyDashboard />} />
           <Route path="/agency/verification" element={<AgencyVerification />} />
+
+          {/* #20 — 채용 공고 관리: wildcard보다 먼저 등록해야 라우팅이 정확함 */}
+          <Route path="/agency/listings" element={<AgencyListings />} />
+
           <Route path="/agency/*" element={<AgencyDashboard />} />
           <Route
             path="/admin"

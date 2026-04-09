@@ -19,6 +19,10 @@ import {
   ChevronUp,
   MessageSquare,
   Loader2,
+  CheckCircle2,
+  Sparkles,
+  Bot,
+  RefreshCw,
 } from "lucide-react";
 import RegionSelector from "@/components/RegionSelector";
 import NotificationBell from "@/components/NotificationBell";
@@ -32,6 +36,7 @@ import {
   MatchRecord,
 } from "@/data/matchData";
 import { client } from "@/lib/api";
+import { getAPIBaseURL } from "@/lib/config";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSEO } from "@/hooks/useSEO";
 
@@ -74,23 +79,38 @@ function AgencyCard({ agency, matchedNames }: { agency: Agency; matchedNames: st
   const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [applied, setApplied] = useState(false);
   const [bookmarked, setBookmarked] = useState(() => {
     return localStorage.getItem(`bookmark_${agency.name}`) === "true";
   });
   const stats = getAgencyStats(agency.name);
   const isMatched = matchedNames.includes(agency.name);
 
-  // 지원하기 핸들러
-  const handleApply = () => {
+  // #14 — 지원하기 핸들러: 실제 API 연결
+  const handleApply = async () => {
     if (!user) {
-      // 미로그인 시 회원가입 페이지로 이동
       navigate("/register");
       return;
     }
+    if (applying) return;
     setApplying(true);
-    // TODO: 실제 API 연결 시 client.entities.applications.create(...) 호출
-    setTimeout(() => setApplying(false), 2000);
-    alert(`${agency.name}에 지원이 접수되었습니다!\n담당자가 검토 후 연락드립니다.`);
+    try {
+      await client.entities.applications.create({
+        rider_name: user.name || user.email || "라이더",
+        agency_name: agency.name,
+        status: "pending",
+        applied_at: new Date().toISOString(),
+        city: agency.city,
+        district: agency.district,
+      });
+      // 성공 피드백 (alert 대신 인라인 표시)
+      setApplied(true);
+    } catch (err) {
+      console.error("지원 실패:", err);
+      alert("지원 중 오류가 발생했습니다. 다시 시도해 주세요.");
+    } finally {
+      setApplying(false);
+    }
   };
 
   // 저장하기 핸들러
@@ -176,13 +196,26 @@ function AgencyCard({ agency, matchedNames }: { agency: Agency; matchedNames: st
       </div>
 
       <div className="flex gap-2 mb-2">
-        <Button
-          className="flex-1 bg-[#E63946] hover:bg-[#FF4D5A] text-white font-bold rounded-xl text-sm"
-          onClick={handleApply}
-          disabled={applying}
-        >
-          {applying ? "접수 중..." : "지원하기"}
-        </Button>
+        {applied || isMatched ? (
+          <div className="flex-1 flex items-center justify-center gap-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold rounded-xl text-sm py-2">
+            <CheckCircle2 size={14} />
+            {isMatched ? "매칭 완료" : "지원 완료"}
+          </div>
+        ) : (
+          <Button
+            className="flex-1 bg-[#E63946] hover:bg-[#FF4D5A] text-white font-bold rounded-xl text-sm"
+            onClick={handleApply}
+            disabled={applying}
+          >
+            {applying ? (
+              <span className="flex items-center gap-2">
+                <Loader2 size={14} className="animate-spin" /> 접수 중...
+              </span>
+            ) : (
+              "지원하기"
+            )}
+          </Button>
+        )}
         <Button
           variant="outline"
           className={`!bg-transparent border-[#2A2A2A] hover:border-[#E63946] rounded-xl px-3 ${
@@ -314,6 +347,58 @@ export default function RiderDashboard() {
       return () => clearTimeout(timer);
     }
   }, [latestMatch]);
+  // #19 — AI 매칭 추천 코로 상태
+  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  // #19 — AI 매칭 추천 호출
+  const handleAIRecommend = async () => {
+    if (!selectedCity || !selectedDistrict) return;
+    setAiLoading(true);
+    setAiResult(null);
+    setAiError(null);
+    try {
+      const prompt = [
+        `라이더 매칭 AI 골대: ${selectedCity} ${selectedDistrict} 지역에서 \ubc30달 라이더를 찾고 있는 사람에게`,
+        `편한고 실용적인 지사 선택 팁과 주의사항을 3가지 이내로 안내해주세요.`,
+        `톤은 친근하고 말말하게. 한국어로. 200자 이내.`,
+      ].join(" ");
+
+      const res = await fetch(`${getAPIBaseURL()}/api/v1/aihub/gentxt`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          model: "gpt-5-chat",
+          messages: [{ role: "user", content: prompt }],
+          stream: false,
+        }),
+      });
+
+      if (res.status === 503) {
+        setAiError("AI 기능을 사용하려면 관리자가 AI API 키를 설정해야 합니다.");
+        return;
+      }
+      if (!res.ok) {
+        throw new Error(`AI 응답 오류 (${res.status})`);
+      }
+
+      const data = await res.json();
+      const content =
+        data?.choices?.[0]?.message?.content ||
+        data?.content ||
+        data?.text ||
+        JSON.stringify(data);
+      setAiResult(content);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "AI 추천 중 오류가 발생했습니다.";
+      setAiError(msg);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
 
   const handleCloseModal = () => {
     setShowMatchModal(false);
@@ -448,12 +533,69 @@ export default function RiderDashboard() {
 
               {selectedCity && selectedDistrict && (
                 <div>
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <MapPin size={18} className="text-[#E63946]" />
                       <h3 className="text-xl font-bold">{selectedDistrict} 지사 목록</h3>
                       <span className="text-[#6B7280] text-sm ml-2">({filteredAgencies.length}개)</span>
                     </div>
+                  </div>
+
+                  {/* #19 — AI 매칭 추천 위젯 */}
+                  <div className="mb-6 bg-gradient-to-r from-[#1A1A1A] to-[#111111] border border-purple-500/20 rounded-2xl p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-purple-500/10 rounded-xl flex items-center justify-center">
+                          <Bot size={16} className="text-purple-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-purple-300">AI 매칭 추천</p>
+                          <p className="text-[10px] text-[#6B7280]">{selectedCity} {selectedDistrict} 맞춤 조언</p>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={handleAIRecommend}
+                        disabled={aiLoading}
+                        className="bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs px-3 h-8 gap-1.5"
+                      >
+                        {aiLoading ? (
+                          <><Loader2 size={12} className="animate-spin" /> 분석 중...</>
+                        ) : (
+                          <><Sparkles size={12} /> AI 추천 받기</>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* AI 결과 */}
+                    {aiResult && (
+                      <div className="bg-[#0D0D0D] border border-purple-500/10 rounded-xl p-4 text-sm text-[#D1D5DB] leading-relaxed animate-in fade-in duration-300">
+                        <div className="flex items-start gap-2">
+                          <Sparkles size={14} className="text-purple-400 mt-0.5 shrink-0" />
+                          <p>{aiResult}</p>
+                        </div>
+                        <button
+                          onClick={handleAIRecommend}
+                          className="mt-3 flex items-center gap-1 text-[10px] text-purple-400 hover:text-purple-300 transition-colors"
+                        >
+                          <RefreshCw size={10} /> 다시 추천받기
+                        </button>
+                      </div>
+                    )}
+
+                    {/* AI 에러 */}
+                    {aiError && (
+                      <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-400 flex items-start gap-2">
+                        <Bot size={14} className="shrink-0 mt-0.5" />
+                        <span>{aiError}</span>
+                      </div>
+                    )}
+
+                    {/* 초기 안내 */}
+                    {!aiResult && !aiError && !aiLoading && (
+                      <p className="text-xs text-[#4B5563] italic">
+                        AI가 {selectedDistrict} 지역의 지사 선택 팁을 알려드립니다.
+                      </p>
+                    )}
                   </div>
 
                       {agenciesLoading ? (

@@ -52,9 +52,19 @@ export default function ReviewSection({ agencyName, canWrite }: ReviewSectionPro
   const [newRating, setNewRating] = useState(0);
   const [newComment, setNewComment] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [localReviews, setLocalReviews] = useState<Review[]>(
-    existingReviews.filter((r) => r.agencyName === agencyName)
-  );
+
+  // #16 — localStorage에서 리뷰 초기값 복원 (새로고침 후에도 유지)
+  const STORAGE_KEY = `sg_reviews_${agencyName}`;
+  const [localReviews, setLocalReviews] = useState<Review[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return JSON.parse(saved) as Review[];
+    } catch {
+      // 파싱 실패 시 기본 데이터 사용
+    }
+    return existingReviews.filter((r) => r.agencyName === agencyName);
+  });
+
   const [submitted, setSubmitted] = useState(false);
 
   const avgRating =
@@ -84,7 +94,16 @@ export default function ReviewSection({ agencyName, canWrite }: ReviewSectionPro
       createdAt: new Date().toISOString().split("T")[0],
       verified: true,
     };
-    setLocalReviews((prev) => [review, ...prev]);
+    const updated = [review, ...localReviews];
+    setLocalReviews(updated);
+
+    // #16 — localStorage에 저장 (새로고침 후에도 유지)
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch {
+      // 저장 공간 부족 시 무시
+    }
+
     setShowWriteForm(false);
     setNewRating(0);
     setNewComment("");

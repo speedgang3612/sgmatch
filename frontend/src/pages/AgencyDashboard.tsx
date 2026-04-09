@@ -24,6 +24,8 @@ import {
   Plus,
   Briefcase,
   Loader2,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import RegionSelector from "@/components/RegionSelector";
 import NotificationBell from "@/components/NotificationBell";
@@ -127,6 +129,22 @@ export default function AgencyDashboard() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [showAddBranch, setShowAddBranch] = useState(false);
+  const [editBranch, setEditBranch] = useState<Branch | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const handleDeleteBranch = async (branchId: number, branchName: string) => {
+    if (!confirm(`"${branchName}" 지사를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+    setDeletingId(branchId);
+    try {
+      await client.entities.agency_profiles.delete({ id: branchId });
+      await refreshBranches();
+    } catch (err) {
+      console.error('지사 삭제 실패:', err);
+      alert('지사 삭제 중 오류가 발생했습니다.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   // #7 — 라이더 목록 불러오기
   useEffect(() => {
@@ -585,7 +603,30 @@ export default function AgencyDashboard() {
 
           {/* 매칭 현황 */}
           {activeView === "match-status" && (
-            <MatchStatusView matches={agencyMatches} type="agency" />
+            <MatchStatusView
+              matches={matches}
+              type="agency"
+              onStatusChange={() => {
+                // #14 — 수락/거절 후 매칭 데이터 재조회
+                client.entities.applications.queryAll({
+                  query: {}, sort: '-created_at', limit: 50, skip: 0,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                }).then((res: any) => {
+                  const items = res?.data?.items;
+                  if (items && items.length > 0) {
+                    setMatches(items.map((a: { id: number; rider_name?: string; agency_name?: string; status?: string; created_at?: string }) => ({
+                      id: String(a.id),
+                      riderName: a.rider_name || '',
+                      agencyName: a.agency_name || '',
+                      city: '', district: '',
+                      status: (a.status || 'pending') as import('@/data/matchData').MatchStatus,
+                      appliedAt: a.created_at || '',
+                      updatedAt: a.created_at || '',
+                    })));
+                  }
+                }).catch((err: unknown) => console.error('매칭 재조회 실패:', err));
+              }}
+            />
           )}
 
           {/* 내 지사 관리 */}
@@ -724,13 +765,36 @@ export default function AgencyDashboard() {
                             )}
                           </div>
 
-                          <Button
-                            variant="outline"
-                            className="w-full !bg-transparent border-[#2A2A2A] text-white hover:border-[#E63946] hover:text-[#E63946] rounded-xl text-sm"
-                            onClick={() => navigate("/agency/listings")}
-                          >
-                            공고 등록하기
-                          </Button>
+                          {/* #17 — 지사 작업 버튼 */}
+                          <div className="flex gap-2 mt-4">
+                            <Button
+                              variant="outline"
+                              className="flex-1 !bg-transparent border-[#2A2A2A] text-white hover:border-[#E63946] hover:text-[#E63946] rounded-xl text-sm gap-1.5"
+                              onClick={() => navigate("/agency/listings")}
+                            >
+                              공고 등록
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="!bg-transparent border-[#2A2A2A] text-[#9CA3AF] hover:border-blue-400 hover:text-blue-400 rounded-xl px-3 gap-1"
+                              onClick={() => setEditBranch(branch)}
+                            >
+                              <Pencil size={14} /> 수정
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="!bg-transparent border-[#2A2A2A] text-[#9CA3AF] hover:border-red-400 hover:text-red-400 rounded-xl px-3 gap-1"
+                              onClick={() => handleDeleteBranch(branch.id, branch.name)}
+                              disabled={deletingId === branch.id}
+                            >
+                              {deletingId === branch.id ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <Trash2 size={14} />
+                              )}
+                              삭제
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -753,6 +817,18 @@ export default function AgencyDashboard() {
           companyId={company.id}
           companyName={company.company_name}
           onSuccess={refreshBranches}
+        />
+      )}
+
+      {/* #17 — 지사 수정 모달 */}
+      {company && editBranch && (
+        <AddBranchModal
+          isOpen={!!editBranch}
+          onClose={() => setEditBranch(null)}
+          companyId={company.id}
+          companyName={company.company_name}
+          onSuccess={() => { setEditBranch(null); refreshBranches(); }}
+          existingBranch={editBranch}
         />
       )}
     </div>

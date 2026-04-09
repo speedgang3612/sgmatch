@@ -10,15 +10,20 @@ import {
   User,
   Bike,
   ChevronRight,
+  ThumbsUp,
+  ThumbsDown,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MatchRecord, MatchStatus } from "@/data/matchData";
 import { statusConfig } from "@/data/matchData";
 import MatchModal from "./MatchModal";
+import { client } from "@/lib/api";
 
 interface MatchStatusViewProps {
   matches: MatchRecord[];
   type: "rider" | "agency";
+  onStatusChange?: () => void; // 상태 변경 후 부모 컴포넌트 갱신
 }
 
 const stepIcons = [Search, Eye, CheckCircle2];
@@ -64,9 +69,14 @@ function ProgressBar({ status }: { status: MatchStatus }) {
   );
 }
 
-export default function MatchStatusView({ matches, type }: MatchStatusViewProps) {
+export default function MatchStatusView({
+  matches,
+  type,
+  onStatusChange,
+}: MatchStatusViewProps) {
   const [selectedMatch, setSelectedMatch] = useState<MatchRecord | null>(null);
   const [filter, setFilter] = useState<MatchStatus | "all">("all");
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const filtered =
     filter === "all" ? matches : matches.filter((m) => m.status === filter);
@@ -77,6 +87,43 @@ export default function MatchStatusView({ matches, type }: MatchStatusViewProps)
     reviewing: matches.filter((m) => m.status === "reviewing").length,
     matched: matches.filter((m) => m.status === "matched").length,
     rejected: matches.filter((m) => m.status === "rejected").length,
+  };
+
+  // #14 — 지사 관점: 수락/거절 처리
+  const handleAccept = async (matchId: string) => {
+    if (!confirm("이 라이더를 수락하시겠습니까?")) return;
+    setUpdatingId(matchId);
+    try {
+      await client.entities.applications.update({
+        id: Number(matchId),
+        status: "matched",
+        updated_at: new Date().toISOString(),
+      });
+      onStatusChange?.();
+    } catch (err) {
+      console.error("수락 처리 실패:", err);
+      alert("수락 처리 중 오류가 발생했습니다.");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleReject = async (matchId: string) => {
+    if (!confirm("이 라이더를 거절하시겠습니까?")) return;
+    setUpdatingId(matchId);
+    try {
+      await client.entities.applications.update({
+        id: Number(matchId),
+        status: "rejected",
+        updated_at: new Date().toISOString(),
+      });
+      onStatusChange?.();
+    } catch (err) {
+      console.error("거절 처리 실패:", err);
+      alert("거절 처리 중 오류가 발생했습니다.");
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
   return (
@@ -117,6 +164,10 @@ export default function MatchStatusView({ matches, type }: MatchStatusViewProps)
         <div className="space-y-4">
           {filtered.map((m) => {
             const config = statusConfig[m.status];
+            const isUpdating = updatingId === m.id;
+            const canAct =
+              type === "agency" &&
+              (m.status === "pending" || m.status === "reviewing");
             return (
               <div
                 key={m.id}
@@ -171,7 +222,49 @@ export default function MatchStatusView({ matches, type }: MatchStatusViewProps)
                     <p className="text-[10px] text-[#6B7280]">
                       지원일: {m.appliedAt}
                     </p>
-                    {m.status === "matched" && (
+
+                    {/* 라이더 관점: 상세 보기 */}
+                    {m.status === "matched" && type === "rider" && (
+                      <Button
+                        onClick={() => setSelectedMatch(m)}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl text-sm px-4"
+                      >
+                        상세 보기
+                      </Button>
+                    )}
+
+                    {/* #14 — 지사 관점: 수락 / 거절 버튼 */}
+                    {canAct && (
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => handleAccept(m.id)}
+                          disabled={isUpdating}
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs px-3 h-8 gap-1"
+                        >
+                          {isUpdating ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <ThumbsUp size={12} />
+                          )}
+                          수락
+                        </Button>
+                        <Button
+                          onClick={() => handleReject(m.id)}
+                          disabled={isUpdating}
+                          variant="outline"
+                          className="!bg-transparent border-red-500/40 text-red-400 hover:border-red-400 hover:text-red-300 font-bold rounded-xl text-xs px-3 h-8 gap-1"
+                        >
+                          {isUpdating ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <ThumbsDown size={12} />
+                          )}
+                          거절
+                        </Button>
+                      </div>
+                    )}
+
+                    {m.status === "matched" && type === "agency" && (
                       <Button
                         onClick={() => setSelectedMatch(m)}
                         className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl text-sm px-4"

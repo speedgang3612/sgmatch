@@ -23,6 +23,24 @@ import {
 } from "lucide-react";
 import { cities } from "@/data/regions";
 import { client } from "@/lib/api";
+import ImageUpload from "@/components/ImageUpload";
+
+interface BranchData {
+  id?: number;
+  name?: string;
+  manager_name?: string;
+  phone?: string;
+  city?: string;
+  district?: string;
+  platform?: string;
+  pay_per_delivery?: string;
+  promotion?: string;
+  settlement_type?: string;
+  motorcycle_option?: string;
+  work_type?: string;
+  verified?: boolean;
+  logo_url?: string; // #18 — 이미지 URL
+}
 
 interface AddBranchModalProps {
   isOpen: boolean;
@@ -30,6 +48,7 @@ interface AddBranchModalProps {
   companyId: number;
   companyName: string;
   onSuccess: () => void;
+  existingBranch?: BranchData; // #17 — 수정 모드: 기존 지사 데이터
 }
 
 export default function AddBranchModal({
@@ -38,21 +57,25 @@ export default function AddBranchModal({
   companyId,
   companyName,
   onSuccess,
+  existingBranch,
 }: AddBranchModalProps) {
+  const isEditMode = !!existingBranch?.id;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [name, setName] = useState("");
-  const [manager, setManager] = useState("");
-  const [phone, setPhone] = useState("");
-  const [city, setCity] = useState("");
-  const [district, setDistrict] = useState("");
-  const [platform, setPlatform] = useState("");
-  const [pay, setPay] = useState("");
-  const [promo, setPromo] = useState("");
-  const [settlement, setSettlement] = useState("");
-  const [motorcycle, setMotorcycle] = useState("");
-  const [workType, setWorkType] = useState("");
+  // #17 — 수정 모드: 기존 데이터로 초기값 세팅
+  const [name, setName] = useState(existingBranch?.name ?? "");
+  const [manager, setManager] = useState(existingBranch?.manager_name ?? "");
+  const [phone, setPhone] = useState(existingBranch?.phone ?? "");
+  const [city, setCity] = useState(existingBranch?.city ?? "");
+  const [district, setDistrict] = useState(existingBranch?.district ?? "");
+  const [platform, setPlatform] = useState(existingBranch?.platform ?? "");
+  const [pay, setPay] = useState(existingBranch?.pay_per_delivery ?? "");
+  const [promo, setPromo] = useState(existingBranch?.promotion ?? "");
+  const [settlement, setSettlement] = useState(existingBranch?.settlement_type ?? "");
+  const [motorcycle, setMotorcycle] = useState(existingBranch?.motorcycle_option ?? "");
+  const [workType, setWorkType] = useState(existingBranch?.work_type ?? "");
+  const [logoUrl, setLogoUrl] = useState(existingBranch?.logo_url ?? "");
 
   const cityData = cities.find((c) => c.name === city);
   const selectClasses = "text-white hover:bg-white/10 focus:bg-white/10 focus:text-white";
@@ -81,31 +104,45 @@ export default function AddBranchModal({
     setSaving(true);
     setError(null);
 
+    const payload = {
+      company_id: companyId,
+      name,
+      manager_name: manager,
+      phone,
+      city,
+      district,
+      platform,
+      pay_per_delivery: pay,
+      promotion: promo,
+      settlement_type: settlement,
+      motorcycle_option: motorcycle,
+      work_type: workType,
+      logo_url: logoUrl,
+      verified: existingBranch?.verified ?? false,
+    };
+
     try {
-      await client.entities.agency_profiles.create({
-        data: {
-          company_id: companyId,
-          name,
-          manager_name: manager,
-          phone,
-          city,
-          district,
-          platform,
-          pay_per_delivery: pay,
-          promotion: promo,
-          settlement_type: settlement,
-          motorcycle_option: motorcycle,
-          work_type: workType,
-          verified: false,
-          created_at: new Date().toISOString().replace("T", " ").slice(0, 19),
-        },
-      });
+      if (isEditMode && existingBranch?.id) {
+        // #17 — 수정 모드: update API 호출
+        await client.entities.agency_profiles.update({
+          id: existingBranch.id,
+          ...payload,
+        });
+      } else {
+        // 신규 등록
+        await client.entities.agency_profiles.create({
+          data: {
+            ...payload,
+            created_at: new Date().toISOString().replace("T", " ").slice(0, 19),
+          },
+        });
+      }
       resetForm();
       onSuccess();
       onClose();
     } catch (err) {
-      console.error("Failed to add branch:", err);
-      setError("지사 등록에 실패했습니다. 다시 시도해주세요.");
+      console.error("지사 저장 실패:", err);
+      setError(isEditMode ? "지사 수정에 실패했습니다. 다시 시도해주세요." : "지사 등록에 실패했습니다. 다시 시도해주세요.");
     } finally {
       setSaving(false);
     }
@@ -119,9 +156,13 @@ export default function AddBranchModal({
       <div className="relative bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-[#1A1A1A] border-b border-[#2A2A2A] p-5 flex items-center justify-between rounded-t-2xl z-10">
           <div>
-            <h3 className="text-lg font-bold">새 지사 추가</h3>
+            <h3 className="text-lg font-bold">
+              {isEditMode ? "지사 정보 수정" : "새 지사 추가"}
+            </h3>
             <p className="text-[#6B7280] text-xs mt-0.5">
-              {companyName}에 새 지사를 추가합니다
+              {isEditMode
+                ? `${companyName} · ${existingBranch?.name ?? ""}를 수정합니다`
+                : `${companyName}에 새 지사를 추가합니다`}
             </p>
           </div>
           <button
@@ -138,6 +179,15 @@ export default function AddBranchModal({
               {error}
             </div>
           )}
+
+          {/* #18 — 지사 로고 이미지 업로드 */}
+          <ImageUpload
+            label="지사 로고/이미지 (선택)"
+            currentUrl={existingBranch?.logo_url}
+            onUpload={(url) => setLogoUrl(url)}
+            bucket="sgmatch"
+          />
+
 
           <div>
             <label className="text-[#9CA3AF] text-sm mb-1.5 block flex items-center gap-1.5">
@@ -314,11 +364,11 @@ export default function AddBranchModal({
           >
             {saving ? (
               <>
-                <Loader2 size={18} className="animate-spin" /> 등록 중...
+                <Loader2 size={18} className="animate-spin" /> 저장 중...
               </>
             ) : (
               <>
-                <CheckCircle2 size={18} /> 지사 등록
+                <CheckCircle2 size={18} /> {isEditMode ? "수정 완료" : "지사 등록"}
               </>
             )}
           </Button>
