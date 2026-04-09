@@ -1,0 +1,67 @@
+# ========================
+# Python / Backend
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+*.so
+
+# 가상환경
+backend/venv/
+venv/
+.venv/
+env/
+
+# 환경 변수 (절대 커밋 금지)
+.env
+.env.*
+!.env.example
+
+# 데이터베이스 (로컬 SQLite)
+*.db
+*.sqlite
+*.sqlite3
+
+# 로그
+logs/
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# ========================
+# Node / Frontend
+# ========================
+node_modules/
+frontend/node_modules/
+
+# Vite 빌드 결과물
+frontend/dist/
+dist/
+
+# pnpm
+.pnpm-debug.log*
+pnpm-debug.log*
+
+# ========================
+# 기타
+# ========================
+*.zip
+*.tar.gz
+deploy_package/
+start_app_v2.sh
+
+# Playwright
+test-results/
+playwright-report/

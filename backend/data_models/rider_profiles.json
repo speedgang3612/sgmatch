@@ -1,0 +1,61 @@
+{
+    "title": "rider_profiles",
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer",
+            "description": "Primary key, auto-increment"
+        },
+        "user_id": {
+            "type": "string",
+            "description": "User ID"
+        },
+        "name": {
+            "type": "string",
+            "description": "라이더 이름"
+        },
+        "phone": {
+            "type": "string",
+            "description": "연락처"
+        },
+        "city": {
+            "type": "string",
+            "description": "시/도"
+        },
+        "district": {
+            "type": "string",
+            "description": "구/군"
+        },
+        "experience": {
+            "type": "string",
+            "description": "경력"
+        },
+        "has_motorcycle": {
+            "type": "boolean",
+            "description": "오토바이 보유 여부"
+        },
+        "rider_type": {
+            "type": "string",
+            "description": "프리/전업"
+        },
+        "birth_year": {
+            "type": "string",
+            "description": "출생년도"
+        },
+        "status": {
+            "type": "string",
+            "description": "활성 상태: active, inactive"
+        },
+        "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "생성일"
+        }
+    },
+    "required": [
+        "id",
+        "user_id",
+        "name",
+        "phone"
+    ]
+}

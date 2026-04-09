@@ -1,0 +1,78 @@
+{
+    "title": "job_listings",
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer",
+            "description": "Primary key, auto-increment"
+        },
+        "user_id": {
+            "type": "string",
+            "description": "User ID"
+        },
+        "company_id": {
+            "type": "integer",
+            "description": "FK to companies table"
+        },
+        "agency_id": {
+            "type": "integer",
+            "description": "FK to agency_profiles table"
+        },
+        "agency_name": {
+            "type": "string",
+            "description": "Branch display name"
+        },
+        "company_name": {
+            "type": "string",
+            "description": "Company name"
+        },
+        "region": {
+            "type": "string",
+            "description": "Region"
+        },
+        "sub_region": {
+            "type": "string",
+            "description": "Sub region"
+        },
+        "title": {
+            "type": "string",
+            "description": "Job title"
+        },
+        "conditions": {
+            "type": "string",
+            "description": "JSON string array of conditions"
+        },
+        "promotion": {
+            "type": "string",
+            "description": "Promotion info"
+        },
+        "motorcycle": {
+            "type": "string",
+            "description": "Motorcycle option"
+        },
+        "settlement": {
+            "type": "string",
+            "description": "Settlement type"
+        },
+        "work_time": {
+            "type": "string",
+            "description": "Work time"
+        },
+        "pay_per_delivery": {
+            "type": "string",
+            "description": "Pay per delivery"
+        },
+        "status": {
+            "type": "string",
+            "description": "Status: 모집중/긴급/마감"
+        },
+        "created_at": {
+            "type": "string",
+            "description": "Created datetime"
+        }
+    },
+    "required": [
+        "id",
+        "user_id"
+    ]
+}

@@ -1,0 +1,45 @@
+{
+    "title": "consultations",
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer",
+            "description": "Primary key, auto-increment"
+        },
+        "user_id": {
+            "type": "string",
+            "description": "User ID"
+        },
+        "name": {
+            "type": "string",
+            "description": "담당자 이름"
+        },
+        "agency": {
+            "type": "string",
+            "description": "지사명"
+        },
+        "phone": {
+            "type": "string",
+            "description": "연락처"
+        },
+        "message": {
+            "type": "string",
+            "description": "문의 내용"
+        },
+        "status": {
+            "type": "string",
+            "description": "상태: pending, contacted, completed"
+        },
+        "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "생성일"
+        }
+    },
+    "required": [
+        "id",
+        "user_id",
+        "name",
+        "phone"
+    ]
+}

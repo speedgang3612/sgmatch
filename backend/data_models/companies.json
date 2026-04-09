@@ -1,0 +1,43 @@
+{
+    "title": "companies",
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer",
+            "description": "Primary key, auto-increment"
+        },
+        "user_id": {
+            "type": "string",
+            "description": "Owner user ID"
+        },
+        "company_name": {
+            "type": "string",
+            "description": "Company name, e.g. 스피드갱"
+        },
+        "business_number": {
+            "type": "string",
+            "description": "Business registration number"
+        },
+        "representative": {
+            "type": "string",
+            "description": "Representative name"
+        },
+        "phone": {
+            "type": "string",
+            "description": "Contact phone number"
+        },
+        "email": {
+            "type": "string",
+            "description": "Contact email"
+        },
+        "created_at": {
+            "type": "string",
+            "description": "Created datetime"
+        }
+    },
+    "required": [
+        "id",
+        "user_id",
+        "company_name"
+    ]
+}
