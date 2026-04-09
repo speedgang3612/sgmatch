@@ -1,0 +1,12 @@
+{
+  "typeCheckingMode": "off",
+  "reportMissingImports": false,
+  "reportMissingModuleSource": false,
+  "useLibraryCodeForTypes": true,
+  "exclude": [
+    "venv",
+    ".venv",
+    "**/__pycache__",
+    "**/*.pyc"
+  ]
+}
