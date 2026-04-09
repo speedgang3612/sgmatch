@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,8 +34,8 @@ import AddBranchModal from "@/components/AddBranchModal";
 import { client } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  agencyMatches,
   agencyNotifications,
+  MatchRecord,
 } from "@/data/matchData";
 import { useSEO } from "@/hooks/useSEO";
 
@@ -94,8 +94,6 @@ interface Rider {
   status: string;
 }
 
-// 라이더 목록 (실제 데이터는 백엔드에서 불러옴 - 현재 등록된 라이더가 없으면 빈 배열)
-const allRiders: Rider[] = [];
 
 export default function AgencyDashboard() {
   const location = useLocation();
@@ -107,7 +105,15 @@ export default function AgencyDashboard() {
   const [activeView, setActiveView] = useState<TabView>("find");
 
   const [showMatchModal, setShowMatchModal] = useState(false);
-  const latestMatch = agencyMatches.find((m) => m.status === "matched");
+
+  // #7 — 라이더 목록: 백엔드 API 연결
+  const [riders, setRiders] = useState<Rider[]>([]);
+  const [ridersLoading, setRidersLoading] = useState(false);
+
+  // #8 — 매칭 데이터: 백엔드 API 연결
+  const [matches, setMatches] = useState<MatchRecord[]>([]);
+
+  const latestMatch = matches.find((m) => m.status === "matched");
 
   useSEO({
     title: "지사 대시보드 - 라이더 찾기",
@@ -121,6 +127,72 @@ export default function AgencyDashboard() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [showAddBranch, setShowAddBranch] = useState(false);
+
+  // #7 — 라이더 목록 불러오기
+  useEffect(() => {
+    const fetchRiders = async () => {
+      try {
+        setRidersLoading(true);
+        const response = await client.entities.rider_profiles.queryAll({
+          query: {},
+          sort: '-created_at',
+          limit: 100,
+          skip: 0,
+        });
+        const items = response?.data?.items;
+        if (items && items.length > 0) {
+          const mapped: Rider[] = items.map((r: { name?: string; city?: string; district?: string; experience?: string; has_motorcycle?: boolean; rider_type?: string; status?: string }) => ({
+            name: r.name || '',
+            city: r.city || '',
+            district: r.district || '',
+            experience: r.experience || '미입력',
+            motorcycle: !!r.has_motorcycle,
+            availableTime: r.rider_type || '언제든지',
+            rating: 4.5,
+            deliveries: 0,
+            status: r.status || '구직중',
+          }));
+          setRiders(mapped);
+        }
+      } catch (err) {
+        console.error('라이더 목록 불러오기 실패:', err);
+      } finally {
+        setRidersLoading(false);
+      }
+    };
+    fetchRiders();
+  }, []);
+
+  // #8 — 매칭 데이터 불러오기
+  useEffect(() => {
+    const fetchMatches = async () => {
+      try {
+        const response = await client.entities.applications.queryAll({
+          query: {},
+          sort: '-created_at',
+          limit: 50,
+          skip: 0,
+        });
+        const items = response?.data?.items;
+        if (items && items.length > 0) {
+          const mapped: MatchRecord[] = items.map((a: { id: number; rider_name?: string; agency_name?: string; status?: string; created_at?: string }) => ({
+            id: String(a.id),
+            riderName: a.rider_name || '',
+            agencyName: a.agency_name || '',
+            city: '',
+            district: '',
+            status: (a.status as MatchRecord['status']) || 'pending',
+            appliedAt: a.created_at || '',
+            updatedAt: a.created_at || '',
+          }));
+          setMatches(mapped);
+        }
+      } catch (err) {
+        console.error('매칭 데이터 불러오기 실패:', err);
+      }
+    };
+    fetchMatches();
+  }, []);
 
   useEffect(() => {
     const dismissed = sessionStorage.getItem("agency-match-modal-dismissed");
@@ -175,7 +247,7 @@ export default function AgencyDashboard() {
     sessionStorage.setItem("agency-match-modal-dismissed", "true");
   };
 
-  const filteredRiders = allRiders.filter((r) => {
+  const filteredRiders = riders.filter((r) => {
     if (selectedCity && selectedDistrict) {
       return r.city === selectedCity && r.district === selectedDistrict;
     }
@@ -209,7 +281,10 @@ export default function AgencyDashboard() {
     }
   };
 
-  const matchedCount = agencyMatches.filter((m) => m.status === "matched").length;
+  const matchedCount = useMemo(
+    () => matches.filter((m) => m.status === "matched").length,
+    [matches]
+  );
 
   const settlementLabel = (type: string) => {
     const map: Record<string, string> = {

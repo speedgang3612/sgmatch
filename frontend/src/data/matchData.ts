@@ -26,11 +26,18 @@ export interface Notification {
   read: boolean;
 }
 
-// 라이더 관점 매칭 데이터 (실제 매칭 시 백엔드에서 불러옴)
+// #8 — 매칭 데이터는 각 대시보드 컴포넌트에서 API로 불러오는 방식으로 변경
+// (선언만 유지 — import 타입 호환성을 위해)
 export const riderMatches: MatchRecord[] = [];
-
-// 지사 관점 매칭 데이터 (실제 매칭 시 백엔드에서 불러옴)
 export const agencyMatches: MatchRecord[] = [];
+
+// #9 — 알림 시각을 "MM/DD HH:mm" 형식으로 생성·
+const currentTimeStr = new Date().toLocaleString('ko-KR', {
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+}).replace('. ', '/').replace('. ', ' ').replace('.', '');
 
 // 라이더 알림 (실제 알림은 백엔드에서 불러옴)
 export const riderNotifications: Notification[] = [
@@ -39,7 +46,7 @@ export const riderNotifications: Notification[] = [
     type: "welcome",
     title: "환영합니다! 🎉",
     message: "SpeedGang Match에 가입해주셔서 감사합니다. 지역을 선택하고 지사를 찾아보세요.",
-    time: "",
+    time: currentTimeStr,
     read: false,
   },
 ];
@@ -51,7 +58,7 @@ export const agencyNotifications: Notification[] = [
     type: "welcome",
     title: "환영합니다! 🎉",
     message: "SpeedGang Match에 가입해주셔서 감사합니다. 채용 공고를 등록하고 라이더를 모집하세요.",
-    time: "",
+    time: currentTimeStr,
     read: false,
   },
 ];

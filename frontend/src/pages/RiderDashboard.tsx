@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,7 @@ import {
   ChevronDown,
   ChevronUp,
   MessageSquare,
+  Loader2,
 } from "lucide-react";
 import RegionSelector from "@/components/RegionSelector";
 import NotificationBell from "@/components/NotificationBell";
@@ -27,9 +28,10 @@ import Logo from "@/components/Logo";
 import ReviewSection from "@/components/ReviewSection";
 import { getAgencyStats, reviewTags } from "@/data/reviewData";
 import {
-  riderMatches,
   riderNotifications,
+  MatchRecord,
 } from "@/data/matchData";
+import { client } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSEO } from "@/hooks/useSEO";
 
@@ -59,9 +61,6 @@ interface Agency {
   badges: string[];
 }
 
-// 지사 목록 (실제 데이터는 백엔드에서 불러옴 - 현재 등록된 지사가 없으면 빈 배열)
-const allAgencies: Agency[] = [];
-
 const badgeColor: Record<string, string> = {
   신규: "bg-amber-500/20 text-amber-400 border-amber-500/30",
   인증됨: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
@@ -70,12 +69,7 @@ const badgeColor: Record<string, string> = {
   "오토바이 리스/렌탈": "bg-rose-500/20 text-rose-400 border-rose-500/30",
 };
 
-// 매칭된 지사 이름 목록
-const matchedAgencyNames = riderMatches
-  .filter((m) => m.status === "matched")
-  .map((m) => m.agencyName);
-
-function AgencyCard({ agency }: { agency: Agency }) {
+function AgencyCard({ agency, matchedNames }: { agency: Agency; matchedNames: string[] }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
@@ -84,7 +78,7 @@ function AgencyCard({ agency }: { agency: Agency }) {
     return localStorage.getItem(`bookmark_${agency.name}`) === "true";
   });
   const stats = getAgencyStats(agency.name);
-  const isMatched = matchedAgencyNames.includes(agency.name);
+  const isMatched = matchedNames.includes(agency.name);
 
   // 지원하기 핸들러
   const handleApply = () => {
@@ -224,8 +218,87 @@ export default function RiderDashboard() {
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [activeView, setActiveView] = useState<TabView>("find");
 
+  // #6 — 지사 목록: 백엔드 API 연결
+  const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [agenciesLoading, setAgenciesLoading] = useState(false);
+
+  // #8 — 매칭 데이터: 백엔드 API 연결
+  const [matches, setMatches] = useState<MatchRecord[]>([]);
+
   const [showMatchModal, setShowMatchModal] = useState(false);
-  const latestMatch = riderMatches.find((m) => m.status === "matched");
+  const latestMatch = matches.find((m) => m.status === "matched");
+
+  // #6 — 지사 목록 불러오기
+  useEffect(() => {
+    const fetchAgencies = async () => {
+      try {
+        setAgenciesLoading(true);
+        const response = await client.entities.agency_profiles.queryAll({
+          query: {},
+          sort: '-created_at',
+          limit: 100,
+          skip: 0,
+        });
+        const items = response?.data?.items;
+        if (items && items.length > 0) {
+          const mapped: Agency[] = items.map((a: Agency & { pay_per_delivery?: string; promotion?: string; settlement_type?: string; motorcycle_option?: string; verified?: boolean }) => ({
+            name: a.name || '',
+            city: a.city || '',
+            district: a.district || '',
+            pay: a.pay_per_delivery || '미정',
+            promo: a.promotion || '없음',
+            settlement: a.settlement_type || '미정',
+            motorcycle: !!(a.motorcycle_option && a.motorcycle_option !== '없음'),
+            score: 85,
+            badges: a.verified ? ['인증됨'] : [],
+          }));
+          setAgencies(mapped);
+        }
+      } catch (err) {
+        console.error('지사 목록 불러오기 실패:', err);
+      } finally {
+        setAgenciesLoading(false);
+      }
+    };
+    fetchAgencies();
+  }, []);
+
+  // #8 — 매칭 데이터 불러오기
+  useEffect(() => {
+    const fetchMatches = async () => {
+      try {
+        const response = await client.entities.applications.queryAll({
+          query: {},
+          sort: '-created_at',
+          limit: 50,
+          skip: 0,
+        });
+        const items = response?.data?.items;
+        if (items && items.length > 0) {
+          const mapped: MatchRecord[] = items.map((a: { id: number; rider_name?: string; agency_name?: string; status?: string; created_at?: string }) => ({
+            id: String(a.id),
+            riderName: a.rider_name || '',
+            agencyName: a.agency_name || '',
+            city: '',
+            district: '',
+            status: (a.status as MatchRecord['status']) || 'pending',
+            appliedAt: a.created_at || '',
+            updatedAt: a.created_at || '',
+          }));
+          setMatches(mapped);
+        }
+      } catch (err) {
+        console.error('매칭 데이터 불러오기 실패:', err);
+      }
+    };
+    fetchMatches();
+  }, []);
+
+  // #8 — 매칭된 지사명 목록 (useMemo로 최적화)
+  const matchedAgencyNames = useMemo(
+    () => matches.filter((m) => m.status === "matched").map((m) => m.agencyName),
+    [matches]
+  );
 
   useSEO({
     title: "라이더 대시보드 - 지사 찾기",
@@ -247,7 +320,7 @@ export default function RiderDashboard() {
     sessionStorage.setItem("rider-match-modal-dismissed", "true");
   };
 
-  const filteredAgencies = allAgencies.filter((a) => {
+  const filteredAgencies = agencies.filter((a) => {
     if (selectedCity && selectedDistrict) {
       return a.city === selectedCity && a.district === selectedDistrict;
     }
@@ -264,7 +337,7 @@ export default function RiderDashboard() {
     setSelectedDistrict("");
   };
 
-  const matchedCount = riderMatches.filter((m) => m.status === "matched").length;
+  const matchedCount = matches.filter((m) => m.status === "matched").length;
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white flex">
@@ -383,7 +456,12 @@ export default function RiderDashboard() {
                     </div>
                   </div>
 
-                  {filteredAgencies.length === 0 ? (
+                      {agenciesLoading ? (
+                        <div className="flex items-center justify-center py-20">
+                          <Loader2 size={32} className="animate-spin text-[#E63946]" />
+                          <span className="ml-3 text-[#9CA3AF]">지사 목록을 불러오는 중...</span>
+                        </div>
+                      ) : filteredAgencies.length === 0 ? (
                     <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-12 text-center">
                       <Building2 size={48} className="text-[#2A2A2A] mx-auto mb-4" />
                       <h4 className="text-lg font-bold mb-2">등록된 지사가 없습니다</h4>
@@ -395,7 +473,7 @@ export default function RiderDashboard() {
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                       {filteredAgencies.map((a, i) => (
-                        <AgencyCard key={i} agency={a} />
+                        <AgencyCard key={i} agency={a} matchedNames={matchedAgencyNames} />
                       ))}
                     </div>
                   )}
@@ -417,7 +495,7 @@ export default function RiderDashboard() {
               )}
             </>
           ) : (
-            <MatchStatusView matches={riderMatches} type="rider" />
+            <MatchStatusView matches={matches} type="rider" />
           )}
         </div>
       </main>
