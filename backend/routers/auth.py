@@ -16,8 +16,9 @@ from core.auth import (
 )
 from core.config import settings
 from core.database import get_db
-from dependencies.auth import get_current_user
+from dependencies.auth import get_current_user, revoke_token
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.responses import RedirectResponse
 from models.auth import User
 from schemas.auth import (
@@ -320,7 +321,14 @@ async def get_current_user_info(current_user: UserResponse = Depends(get_current
 
 
 @router.get("/logout")
-async def logout():
-    """Logout user."""
+async def logout(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(
+        HTTPBearer(auto_error=False)
+    ),
+):
+    """Logout user - 현재 JWT 토큰을 블랙리스트에 등록하여 무효화한다."""
+    if credentials and credentials.scheme.lower() == "bearer":
+        revoke_token(credentials.credentials)
+        logger.info("JWT 토큰 명시적 폐기 (블랙리스트 등록 완료)")
     logout_url = build_logout_url()
     return {"redirect_url": logout_url}

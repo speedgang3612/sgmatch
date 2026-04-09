@@ -148,10 +148,35 @@ async def initialize_stripe():
         CheckoutError: If Stripe initialization fails with a fixable error
     """
 
-    stripe_key = settings.stripe_secret_key
+    # ------------------------------------------------------------------
+    # #13 — Stripe 키 미설정 시 명확한 에러 메시지 반환
+    # ------------------------------------------------------------------
+    try:
+        stripe_key = settings.stripe_secret_key
+    except AttributeError:
+        logger.error(
+            "STRIPE_SECRET_KEY 환경변수가 설정되지 않았습니다. "
+            ".env 파일에 STRIPE_SECRET_KEY를 추가해 주세요."
+        )
+        raise CheckoutError(
+            "결제 시스템이 설정되지 않았습니다. 관리자에게 문의해 주세요.",
+            error_type="configuration",
+            is_retryable=False,
+            fixable=True,
+            fix_suggestion="STRIPE_SECRET_KEY 환경변수를 .env 파일에 추가해 주세요.",
+        )
+
     if not stripe_key:
-        logger.warning("Error: Stripe key is empty or None")
-        return
+        logger.error(
+            "STRIPE_SECRET_KEY가 비어 있습니다. 실제 Stripe 키를 입력해 주세요."
+        )
+        raise CheckoutError(
+            "결제 키가 설정되지 않았습니다. 관리자에게 문의해 주세요.",
+            error_type="configuration",
+            is_retryable=False,
+            fixable=True,
+            fix_suggestion="STRIPE_SECRET_KEY에 유효한 Stripe 비밀 키를 입력해 주세요.",
+        )
 
     try:
         stripe.api_key = stripe_key

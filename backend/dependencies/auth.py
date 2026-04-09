@@ -10,6 +10,23 @@ from schemas.auth import UserResponse
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# 토큰 블랙리스트 (인메모리)
+# ⚠️ 서버 재시작 시 초기화됨. 운영 환경에서는 Redis 또는 DB 테이블로 전환 권장.
+# ---------------------------------------------------------------------------
+_revoked_tokens: set[str] = set()
+
+
+def revoke_token(token: str) -> None:
+    """토큰을 블랙리스트에 추가한다 (로그아웃 시 호출)."""
+    _revoked_tokens.add(token)
+
+
+def is_token_revoked(token: str) -> bool:
+    """토큰이 블랙리스트에 있는지 확인한다."""
+    return token in _revoked_tokens
+
+
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
@@ -26,6 +43,12 @@ async def get_bearer_token(
 
 async def get_current_user(token: str = Depends(get_bearer_token)) -> UserResponse:
     """Dependency to get current authenticated user via JWT token."""
+    # 블랙리스트 등록된 토큰 거부
+    if is_token_revoked(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="토큰이 만료되었습니다. 다시 로그인해 주세요.",
+        )
     try:
         payload = decode_access_token(token)
     except AccessTokenError as exc:

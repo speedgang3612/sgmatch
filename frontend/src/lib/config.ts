@@ -11,10 +11,18 @@ const defaultConfig = {
   API_BASE_URL: 'http://127.0.0.1:8000', // Only used if runtime config fails to load
 };
 
+// #11 — 개발 환경에서만 로그 출력 (운영 환경에서는 자동으로 숨김)
+// Vite 빌드 시 import.meta.env.DEV = true(dev) / false(prod) 자동 설정
+const debugLog = (...args: unknown[]): void => {
+  if (import.meta.env.DEV) {
+    console.log(...args);
+  }
+};
+
 // Function to load runtime configuration
 export async function loadRuntimeConfig(): Promise<void> {
   try {
-    console.log('🔧 DEBUG: Starting to load runtime config...');
+    debugLog('🔧 DEBUG: Starting to load runtime config...');
     // Try to load configuration from a config endpoint
     const response = await fetch('/api/config');
     if (response.ok) {
@@ -22,23 +30,23 @@ export async function loadRuntimeConfig(): Promise<void> {
       // Only parse as JSON if the response is actually JSON
       if (contentType && contentType.includes('application/json')) {
         runtimeConfig = await response.json();
-        console.log('Runtime config loaded successfully');
+        debugLog('Runtime config loaded successfully');
       } else {
-        console.log(
+        debugLog(
           'Config endpoint returned non-JSON response, skipping runtime config'
         );
       }
     } else {
-      console.log(
+      debugLog(
         '🔧 DEBUG: Config fetch failed with status:',
         response.status
       );
     }
   } catch (error) {
-    console.log('Failed to load runtime config, using defaults:', error);
+    debugLog('Failed to load runtime config, using defaults:', error);
   } finally {
     configLoading = false;
-    console.log(
+    debugLog(
       '🔧 DEBUG: Config loading finished, configLoading set to false'
     );
   }
@@ -48,13 +56,13 @@ export async function loadRuntimeConfig(): Promise<void> {
 export function getConfig() {
   // If config is still loading, return default config to avoid using stale Vite env vars
   if (configLoading) {
-    console.log('Config still loading, using default config');
+    debugLog('Config still loading, using default config');
     return defaultConfig;
   }
 
   // First try runtime config (for Lambda)
   if (runtimeConfig) {
-    console.log('Using runtime config');
+    debugLog('Using runtime config');
     return runtimeConfig;
   }
 
@@ -63,12 +71,12 @@ export function getConfig() {
     const viteConfig = {
       API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
     };
-    console.log('Using Vite environment config');
+    debugLog('Using Vite environment config');
     return viteConfig;
   }
 
   // Finally fall back to default
-  console.log('Using default config');
+  debugLog('Using default config');
   return defaultConfig;
 }
 
@@ -86,3 +94,4 @@ export const config = {
     return getAPIBaseURL();
   },
 };
+
