@@ -80,7 +80,7 @@ const sidebarLinks = [
   { icon: BarChart3, label: "분석", href: "/agency/analytics" },
 ];
 
-const SETTLEMENT_URL = "https://speedgang.pythonanywhere.com/";
+const SETTLEMENT_URL = "https://sgnext.co.kr";
 
 interface Rider {
   name: string;

@@ -309,7 +309,7 @@ export default function Pricing() {
 
                 {i === 0 ? (
                   <a
-                    href="https://speedgang.pythonanywhere.com/"
+                    href="https://sgnext.co.kr"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -424,7 +424,7 @@ export default function Pricing() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
-              href="https://speedgang.pythonanywhere.com/"
+              href="https://sgnext.co.kr"
               target="_blank"
               rel="noopener noreferrer"
             >
