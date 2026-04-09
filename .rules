@@ -1,0 +1,48 @@
+# SG Match 프로젝트 지침서
+
+## 프로젝트 정의
+배달 라이더와 지사를 연결하는 구인/구직 매칭 플랫폼 "SG Match" 개발 중.
+바이브코딩 입문자이므로 모든 설명은 초보자도 이해할 수 있게 친절하고 자세하게 해줘.
+
+## 기술 스택
+- 프론트엔드: React 18 + TypeScript + Vite + Tailwind CSS + shadcn/ui
+- 백엔드: Python FastAPI + SQLAlchemy + Alembic
+- DB: SQLite (로컬) / PostgreSQL (운영)
+- 패키지 매니저: pnpm
+
+## 폴더 구조
+- frontend/src/pages/ → 페이지 컴포넌트
+- frontend/src/components/ → 재사용 컴포넌트
+- frontend/src/api/ → API 호출 함수
+- backend/routers/ → API 라우터
+- backend/models/ → DB 모델
+- backend/services/ → 비즈니스 로직
+
+## 디자인 시스템
+- 테마: 다크 (#0A0A0A 배경)
+- 포인트 색상: #E63946 (레드)
+- 카드 배경: #1A1A1A
+- 섹션 교차 배경: #111111
+- 테두리: #2A2A2A
+- 본문 텍스트: #9CA3AF
+- 버튼: bg-[#E63946] hover:bg-[#FF4D5A] rounded-xl font-bold
+
+## 배포 환경
+- 프론트엔드: Vercel → sgmatch.co.kr
+- 백엔드: Railway → sgmatch-production.up.railway.app
+- GitHub: github.com/speedgang3612/sgmatch
+- 로컬 실행: start_dev.bat 더블클릭
+
+## 코드 작성 규칙
+- TypeScript 타입 항상 명시
+- 수정 요청 시 해당 부분만 변경, 나머지 코드 유지
+- Tailwind CSS 클래스 사용
+- 한국어 주석 포함
+- 에러 발생 시 원인과 해결책 같이 설명
+- 단계별로 자세히 설명
+
+## 참고 사이트
+- 정산 프로그램 레퍼런스: sgnext.co.kr
+- 로컬 백엔드: http://localhost:8000
+- 로컬 프론트엔드: http://localhost:3000
+- API 문서: http://localhost:8000/docs
