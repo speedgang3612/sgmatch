@@ -8,7 +8,7 @@ let configLoading = true;
 
 // Default fallback configuration
 const defaultConfig = {
-  API_BASE_URL: 'http://127.0.0.1:8000', // Only used if runtime config fails to load
+  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://sgmatch.onrender.com',
 };
 
 // #11 — 개발 환경에서만 로그 출력 (운영 환경에서는 자동으로 숨김)
