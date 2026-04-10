@@ -25,6 +25,9 @@ alembic>=1.13.0
 aiosqlite>=0.20.0
 greenlet
 
+# Redis (token blacklist)
+redis>=5.0.0
+
 # auth module dependencies
 python-jose[cryptography]>=3.3.0
 

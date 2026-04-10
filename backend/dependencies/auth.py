@@ -5,80 +5,64 @@ from typing import Optional
 
 from core.auth import AccessTokenError, decode_access_token
 from core.database import get_db
+from core.redis import get_redis
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from models.auth import RevokedToken
 from schemas.auth import UserResponse
-from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# 토큰 블랙리스트 — DB 기반 (서버 재시작 후에도 유지)
+# 토큰 블랙리스트 — Redis 기반 (TTL 자동 만료)
 # ---------------------------------------------------------------------------
+
+_BLACKLIST_PREFIX = "revoked:"
+_DEFAULT_TTL_SECONDS = 86400  # 24시간 (JWT 기본 만료와 동일)
 
 
 def _hash_token(token: str) -> str:
-    """토큰을 SHA-256으로 해시하여 DB 저장 전 민감 정보를 제거한다."""
+    """토큰을 SHA-256으로 해시하여 Redis 저장 전 민감 정보를 제거한다."""
     return hashlib.sha256(token.encode()).hexdigest()
 
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
-async def revoke_token(token: str, db: AsyncSession, expires_at: Optional[datetime] = None) -> None:
-    """토큰을 DB 블랙리스트에 추가한다 (로그아웃 시 호출)."""
-    token_hash = _hash_token(token)
-    # 이미 등록된 경우 무시
-    existing = await db.execute(select(RevokedToken).where(RevokedToken.token_hash == token_hash))
-    if existing.scalar_one_or_none() is None:
-        db.add(RevokedToken(token_hash=token_hash, expires_at=expires_at))
-        await db.commit()
+async def revoke_token(token: str, expires_at: Optional[datetime] = None) -> None:
+    """토큰을 Redis 블랙리스트에 추가한다 (로그아웃 시 호출).
 
-
-# 주의-2: 만료 토큰 정리 카운터 (100 요청마다 1회 실행)
-_revoke_check_counter: int = 0
-_CLEANUP_INTERVAL: int = 100
-
-
-async def _cleanup_expired_tokens(db: AsyncSession) -> None:
-    """만료된 토큰을 DB에서 삭제한다 (주기적 청소)."""
-    try:
-        await db.execute(
-            delete(RevokedToken).where(
-                RevokedToken.expires_at.isnot(None),
-                RevokedToken.expires_at < datetime.now(timezone.utc),
-            )
-        )
-        await db.commit()
-    except Exception as e:
-        logger.warning("만료 토큰 정리 실패: %s", e)
-
-
-async def is_token_revoked(token: str, db: AsyncSession) -> bool:
-    """토큰이 DB 블랙리스트에 있는지 확인한다.
-
-    DB 오류 시 fail-open 처리 (False 반환) — JWT 서명 검증이 1차 방어선.
+    TTL은 expires_at 기준으로 자동 계산된다.
+    expires_at이 없으면 기본 24시간 TTL 적용.
     """
-    global _revoke_check_counter
-    _revoke_check_counter += 1
+    redis = await get_redis()
+    token_hash = _hash_token(token)
+    key = f"{_BLACKLIST_PREFIX}{token_hash}"
 
-    # 주의-2: 100 요청마다 만료 토큰 정리
-    if _revoke_check_counter >= _CLEANUP_INTERVAL:
-        _revoke_check_counter = 0
-        await _cleanup_expired_tokens(db)
+    # TTL 계산
+    if expires_at:
+        now = datetime.now(timezone.utc)
+        ttl = int((expires_at - now).total_seconds())
+        if ttl <= 0:
+            return  # 이미 만료된 토큰 — 저장 불필요
+    else:
+        ttl = _DEFAULT_TTL_SECONDS
 
+    await redis.setex(key, ttl, "1")
+
+
+async def is_token_revoked(token: str) -> bool:
+    """토큰이 Redis 블랙리스트에 있는지 확인한다.
+
+    Redis 오류 시 fail-open 처리 (False 반환) — JWT 서명 검증이 1차 방어선.
+    """
     try:
+        redis = await get_redis()
         token_hash = _hash_token(token)
-        result = await db.execute(
-            select(RevokedToken).where(RevokedToken.token_hash == token_hash)
-        )
-        return result.scalar_one_or_none() is not None
+        key = f"{_BLACKLIST_PREFIX}{token_hash}"
+        return await redis.exists(key) > 0
     except Exception as e:
-        # 치명-1: DB 장애 시 fail-open — 서비스 가용성 유지
-        # JWT 서명과 만료 시간은 decode_access_token()에서 별도 검증됨
-        logger.warning("DB 오류로 토큰 블랙리스트 확인 불가, fail-open 처리: %s", e)
+        logger.warning("Redis 오류로 토큰 블랙리스트 확인 불가, fail-open 처리: %s", e)
         return False
 
 
@@ -98,8 +82,8 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db),
 ) -> UserResponse:
     """Dependency to get current authenticated user via JWT token."""
-    # DB 블랙리스트 확인
-    if await is_token_revoked(token, db):
+    # Redis 블랙리스트 확인
+    if await is_token_revoked(token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="토큰이 만료되었습니다. 다시 로그인해 주세요.",

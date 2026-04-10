@@ -21,6 +21,7 @@ from fastapi.routing import APIRouter
 from services.database import initialize_database, close_database
 from services.mock_data import initialize_mock_data
 from services.auth import initialize_admin_user
+from core.redis import close_redis
 # MODULE_IMPORTS_END
 
 
@@ -79,6 +80,7 @@ async def lifespan(app: FastAPI):
     logger.info("=== Application startup completed successfully ===")
     yield
     # MODULE_SHUTDOWN_START
+    await close_redis()
     await close_database()
     # MODULE_SHUTDOWN_END
 

@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # Database
     database_url: str = ""
 
+    # Redis
+    redis_url: str = ""
+
     # AWS Lambda Configuration
     is_lambda: bool = False
     lambda_function_name: str = "fastapi-backend"

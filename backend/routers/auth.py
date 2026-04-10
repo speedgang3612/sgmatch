@@ -329,16 +329,15 @@ async def logout(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(
         HTTPBearer(auto_error=False)
     ),
-    db: AsyncSession = Depends(get_db),
 ):
-    """로그아웃 - 현재 JWT 토큰을 DB 블랙리스트에 등록하여 무효화한다."""
+    """로그아웃 - 현재 JWT 토큰을 Redis 블랙리스트에 등록하여 무효화한다."""
     if credentials and credentials.scheme.lower() == "bearer":
         try:
-            # 심각-4: revoke_token 실패해도 로그아웃 흙름은 계속 진행
-            await revoke_token(credentials.credentials, db)
-            logger.info("JWT 토큰 명시적 폐기 (DB 블랙리스트 등록 완료)")
+            # 심각-4: revoke_token 실패해도 로그아웃 흐름은 계속 진행
+            await revoke_token(credentials.credentials)
+            logger.info("JWT 토큰 명시적 폐기 (Redis 블랙리스트 등록 완료)")
         except Exception as e:
-            logger.error("토큰 폐기 실패 (DB 오류): %s", e)
+            logger.error("토큰 폐기 실패 (Redis 오류): %s", e)
             # 실패해도 로그아웃 URL은 반환 — 토큰 만료 시 자동 무효화됨
     logout_url = build_logout_url()
     return {"redirect_url": logout_url}
