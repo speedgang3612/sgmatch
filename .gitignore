@@ -65,3 +65,12 @@ start_app_v2.sh
 # Playwright
 test-results/
 playwright-report/
+
+# ========================
+# 부하 테스트 (Locust) - 절대 push 금지
+# ========================
+locustfile.py
+locust_token.txt
+gen_admin_token.py
+locust_report_*.csv
+locust_stats*.csv

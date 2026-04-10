@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Literal, Optional
 
@@ -7,6 +8,7 @@ from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
+from core.redis import get_redis
 from dependencies.auth import get_admin_user
 from schemas.auth import UserResponse
 from models.rider_profiles import Rider_profiles
@@ -40,33 +42,56 @@ async def get_platform_stats(
     db: AsyncSession = Depends(get_db),
 ):
     """Get platform statistics for admin dashboard."""
+    _CACHE_KEY = "admin:stats"
+    _CACHE_TTL = 30  # 30초 TTL
+
+    # 1. Redis 쳨시 우선 조회
+    redis = None
     try:
-        result = await db.execute(select(func.count(Rider_profiles.id)))
-        total_riders = result.scalar() or 0
+        redis = await get_redis()
+        cached = await redis.get(_CACHE_KEY)
+        if cached:
+            logger.debug("admin/stats: cache hit")
+            return PlatformStats(**json.loads(cached))
+    except Exception as e:
+        logger.warning(f"Redis cache read failed, falling back to DB: {e}")
 
-        result = await db.execute(select(func.count(Agency_profiles.id)))
-        total_agencies = result.scalar() or 0
+    # 2. 단일 쿼리로 4개 COUNT 통합 (스칼라 서브쿼리)
+    try:
+        total_riders_sq = select(func.count(Rider_profiles.id)).scalar_subquery()
+        total_agencies_sq = select(func.count(Agency_profiles.id)).scalar_subquery()
+        pending_riders_sq = select(func.count(Rider_profiles.id)).where(
+            (Rider_profiles.status == "대기중") | (Rider_profiles.status.is_(None))
+        ).scalar_subquery()
+        pending_agencies_sq = select(func.count(Agency_profiles.id)).where(
+            (Agency_profiles.verified == False) | (Agency_profiles.verified.is_(None))
+        ).scalar_subquery()
 
         result = await db.execute(
-            select(func.count(Rider_profiles.id)).where(
-                (Rider_profiles.status == "대기중") | (Rider_profiles.status.is_(None))
+            select(
+                total_riders_sq.label("total_riders"),
+                total_agencies_sq.label("total_agencies"),
+                pending_riders_sq.label("pending_riders"),
+                pending_agencies_sq.label("pending_agencies"),
             )
         )
-        pending_riders = result.scalar() or 0
-
-        result = await db.execute(
-            select(func.count(Agency_profiles.id)).where(
-                (Agency_profiles.verified == False) | (Agency_profiles.verified.is_(None))
-            )
+        row = result.one()
+        stats = PlatformStats(
+            total_riders=row[0] or 0,
+            total_agencies=row[1] or 0,
+            pending_riders=row[2] or 0,
+            pending_agencies=row[3] or 0,
         )
-        pending_agencies = result.scalar() or 0
 
-        return PlatformStats(
-            total_riders=total_riders,
-            total_agencies=total_agencies,
-            pending_riders=pending_riders,
-            pending_agencies=pending_agencies,
-        )
+        # 3. Redis에 결과 쳨싱 (Redis 장애 시 무시하고 정상 응답)
+        if redis is not None:
+            try:
+                await redis.setex(_CACHE_KEY, _CACHE_TTL, json.dumps(stats.model_dump()))
+                logger.debug("admin/stats: cache stored")
+            except Exception as e:
+                logger.warning(f"Redis cache write failed: {e}")
+
+        return stats
     except Exception as e:
         logger.error(f"Error fetching platform stats: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
