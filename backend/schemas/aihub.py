@@ -49,8 +49,8 @@ class GenTxtRequest(BaseModel):
 
     messages: List[ChatMessage] = Field(..., description="Conversation messages list.")
     model: str = Field(
-        default="deepseek-v3.2",
-        description="Model name: gpt-5-chat / gemini-2.5-pro / gemini-3-pro-preview / claude-4-5-sonnet / deepseek-v3.2.",
+        default="deepseek/deepseek-chat",
+        description="Model name: openai/gpt-4o / google/gemini-2.5-pro / anthropic/claude-sonnet-4-5 / deepseek/deepseek-chat.",
     )
     stream: bool = Field(default=False, description="Whether to enable streaming output.")
     temperature: Optional[float] = Field(default=0.7, description="Sampling temperature (0-2).")
@@ -81,8 +81,8 @@ class GenImgRequest(BaseModel):
         ),
     )
     model: str = Field(
-        default="gemini-2.5-flash-image",
-        description="Model name",
+        default="openai/gpt-image-1",
+        description="Model name: openai/gpt-image-1",
     )
     size: str = Field(default="1024x1024", description="Image size: 1024x1024 / 1024x1792 / 1792x1024.")
     quality: Literal["standard", "hd"] = Field(

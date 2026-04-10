@@ -111,11 +111,10 @@ async def generate_text(
     - stream=true: return an SSE streaming response
 
     Available models:
-    - gpt-5-chat: high stability and compliance, suitable for JSON output and customer service scenarios
-    - gemini-2.5-pro: production-grade multimodal model for daily multimodal tasks
-    - gemini-3-pro-preview: deep reasoning and ultra-long context (1M+ tokens)
-    - claude-4-5-sonnet: ideal for complex engineering and cross-file code refactoring
-    - deepseek-v3.2: large-scale batch processing in cost-sensitive scenarios (text only)
+    - openai/gpt-4o: high stability and compliance, suitable for JSON output and customer service scenarios
+    - google/gemini-2.5-pro: production-grade multimodal model for daily multimodal tasks
+    - anthropic/claude-sonnet-4-5: ideal for complex engineering and cross-file code refactoring
+    - deepseek/deepseek-chat: large-scale batch processing in cost-sensitive scenarios (text only)
     """
     try:
         service = AIHubService()
@@ -163,8 +162,7 @@ async def generate_image(
     If `image` is provided, the endpoint uses the OpenAI-compatible `images/edits` API to edit the input image.
 
     Available models:
-    - gemini-2.5-flash-image: visual creativity and editing, marketing asset generation, partial image editing
-    - gemini-3-pro-image-preview: higher quality image generation/editing
+    - openai/gpt-image-1: image generation and editing (img2img), marketing assets
 
     Parameters:
     - image: optional input image(s). Supports a base64 data URI string or a list of base64 data URIs. If provided, runs image editing (img2img).
