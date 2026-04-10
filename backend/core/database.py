@@ -158,6 +158,9 @@ class DatabaseManager:
                     f"server_settings.statement_cache_size={'0 (Supavisor)' if is_prod else 'skipped (local dev)'}"
                 )
 
+            # 캐시 무효화용 더미 주석 - 2026-04-10
+            logger.info("DB init v2 - raw_userids 완전 제거 버전")
+
             self.engine = create_async_engine(database_url, **engine_kwargs)
             logger.info("Database engine created successfully")
 
