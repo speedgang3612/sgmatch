@@ -131,22 +131,24 @@ class DatabaseManager:
 
             # PostgreSQL / asyncpg 연결 설정
             # - SSL: prod(Render) → "require", dev(로컬) → False (Windows OpenSSL 경로 버그 우회)
-            # - server_settings.search_path: Supabase Session Pooler tenant 파싱 보조
-            # - prepared_statement_cache_size=0: pgBouncer 호환 (prepared statement 캐시 비활성화)
+            # - prepared_statement_cache_size=0: asyncpg 클라이언트 사이드 캐시 비활성화
+            # - server_settings.statement_cache_size="0": Supavisor(Session Pooler) 서버 사이드 캐시 비활성화
+            #   → Supabase 공식 문서 및 GitHub Discussion #28239 기준 "Tenant or user not found" 해결책
             if "asyncpg" in database_url or "postgresql" in database_url:
                 is_prod = os.environ.get("ENVIRONMENT", "dev").lower() == "prod"
                 ssl_setting = "require" if is_prod else False
                 connect_args: dict = {
                     "ssl": ssl_setting,
-                    "prepared_statement_cache_size": 0,  # pgBouncer Session Pooler 호환 필수
+                    "prepared_statement_cache_size": 0,  # asyncpg 클라이언트 캐시 비활성화
                 }
                 if is_prod:
-                    connect_args["server_settings"] = {"search_path": "public"}
+                    # Supavisor에게 서버 사이드 statement 캐시 비활성화 전달 (문자열 "0" 필수)
+                    connect_args["server_settings"] = {"statement_cache_size": "0"}
                 engine_kwargs["connect_args"] = connect_args
                 logger.info(
                     f"PostgreSQL connect_args: ssl={'require' if is_prod else 'disabled'}, "
                     f"prepared_statement_cache_size=0, "
-                    f"server_settings={'set' if is_prod else 'skipped (local dev)'}"
+                    f"server_settings.statement_cache_size={'0 (Supavisor)' if is_prod else 'skipped (local dev)'}"
                 )
 
             self.engine = create_async_engine(database_url, **engine_kwargs)
