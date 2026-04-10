@@ -129,10 +129,14 @@ class DatabaseManager:
                 engine_kwargs["pool_timeout"] = 30  # Connection acquisition timeout (30 seconds)
                 logger.info("Using QueuePool with connection pooling for non-Lambda environment")
 
-            # For PostgreSQL with asyncpg, disable SSL context loading to avoid
-            # Windows non-ASCII path bug in OpenSSL (ssl.load_cert_chain OSError 42)
+            # SSL 설정: 환경에 따라 자동 분기
+            # - prod (Render 등 Linux): Supabase 연결에 ssl=require 필수
+            # - dev  (로컬 Windows): OpenSSL 비-ASCII 경로 버그 우회를 위해 ssl=False 유지
             if "asyncpg" in database_url or "postgresql" in database_url:
-                engine_kwargs["connect_args"] = {"ssl": False}
+                is_prod = os.environ.get("ENVIRONMENT", "dev").lower() == "prod"
+                ssl_setting = "require" if is_prod else False
+                engine_kwargs["connect_args"] = {"ssl": ssl_setting}
+                logger.info(f"PostgreSQL SSL mode: {'require' if is_prod else 'disabled (local dev)'}")
 
             self.engine = create_async_engine(database_url, **engine_kwargs)
             logger.info("Database engine created successfully")
