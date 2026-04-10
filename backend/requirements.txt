@@ -20,7 +20,7 @@ cryptography
 
 
 # database module dependencies
-sqlalchemy>=2.0.0
+sqlalchemy==2.0.36
 asyncpg==0.29.0
 alembic>=1.13.0
 aiosqlite>=0.20.0
