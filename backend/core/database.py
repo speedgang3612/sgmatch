@@ -129,14 +129,25 @@ class DatabaseManager:
                 engine_kwargs["pool_timeout"] = 30  # Connection acquisition timeout (30 seconds)
                 logger.info("Using QueuePool with connection pooling for non-Lambda environment")
 
-            # SSL 설정: 환경에 따라 자동 분기
-            # - prod (Render 등 Linux): Supabase 연결에 ssl=require 필수
-            # - dev  (로컬 Windows): OpenSSL 비-ASCII 경로 버그 우회를 위해 ssl=False 유지
+            # PostgreSQL / asyncpg 연결 설정
+            # - SSL: prod(Render) → "require", dev(로컬) → False (Windows OpenSSL 경로 버그 우회)
+            # - server_settings.search_path: Supabase Session Pooler tenant 파싱 보조
+            # - prepared_statement_cache_size=0: pgBouncer 호환 (prepared statement 캐시 비활성화)
             if "asyncpg" in database_url or "postgresql" in database_url:
                 is_prod = os.environ.get("ENVIRONMENT", "dev").lower() == "prod"
                 ssl_setting = "require" if is_prod else False
-                engine_kwargs["connect_args"] = {"ssl": ssl_setting}
-                logger.info(f"PostgreSQL SSL mode: {'require' if is_prod else 'disabled (local dev)'}")
+                connect_args: dict = {
+                    "ssl": ssl_setting,
+                    "prepared_statement_cache_size": 0,  # pgBouncer Session Pooler 호환 필수
+                }
+                if is_prod:
+                    connect_args["server_settings"] = {"search_path": "public"}
+                engine_kwargs["connect_args"] = connect_args
+                logger.info(
+                    f"PostgreSQL connect_args: ssl={'require' if is_prod else 'disabled'}, "
+                    f"prepared_statement_cache_size=0, "
+                    f"server_settings={'set' if is_prod else 'skipped (local dev)'}"
+                )
 
             self.engine = create_async_engine(database_url, **engine_kwargs)
             logger.info("Database engine created successfully")
