@@ -4,30 +4,46 @@ from datetime import datetime
 from typing import Optional
 
 from core.auth import AccessTokenError, decode_access_token
+from core.database import get_db
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from models.auth import RevokedToken
 from schemas.auth import UserResponse
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# 토큰 블랙리스트 (인메모리)
-# ⚠️ 서버 재시작 시 초기화됨. 운영 환경에서는 Redis 또는 DB 테이블로 전환 권장.
+# 토큰 블랙리스트 — DB 기반 (서버 재시작 후에도 유지)
 # ---------------------------------------------------------------------------
-_revoked_tokens: set[str] = set()
 
 
-def revoke_token(token: str) -> None:
-    """토큰을 블랙리스트에 추가한다 (로그아웃 시 호출)."""
-    _revoked_tokens.add(token)
-
-
-def is_token_revoked(token: str) -> bool:
-    """토큰이 블랙리스트에 있는지 확인한다."""
-    return token in _revoked_tokens
+def _hash_token(token: str) -> str:
+    """토큰을 SHA-256으로 해시하여 DB 저장 전 민감 정보를 제거한다."""
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 bearer_scheme = HTTPBearer(auto_error=False)
+
+
+async def revoke_token(token: str, db: AsyncSession, expires_at: Optional[datetime] = None) -> None:
+    """토큰을 DB 블랙리스트에 추가한다 (로그아웃 시 호출)."""
+    token_hash = _hash_token(token)
+    # 이미 등록된 경우 무시
+    existing = await db.execute(select(RevokedToken).where(RevokedToken.token_hash == token_hash))
+    if existing.scalar_one_or_none() is None:
+        db.add(RevokedToken(token_hash=token_hash, expires_at=expires_at))
+        await db.commit()
+
+
+async def is_token_revoked(token: str, db: AsyncSession) -> bool:
+    """토큰이 DB 블랙리스트에 있는지 확인한다."""
+    token_hash = _hash_token(token)
+    result = await db.execute(
+        select(RevokedToken).where(RevokedToken.token_hash == token_hash)
+    )
+    return result.scalar_one_or_none() is not None
 
 
 async def get_bearer_token(
@@ -41,10 +57,13 @@ async def get_bearer_token(
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication credentials were not provided")
 
 
-async def get_current_user(token: str = Depends(get_bearer_token)) -> UserResponse:
+async def get_current_user(
+    token: str = Depends(get_bearer_token),
+    db: AsyncSession = Depends(get_db),
+) -> UserResponse:
     """Dependency to get current authenticated user via JWT token."""
-    # 블랙리스트 등록된 토큰 거부
-    if is_token_revoked(token):
+    # DB 블랙리스트 확인
+    if await is_token_revoked(token, db):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="토큰이 만료되었습니다. 다시 로그인해 주세요.",

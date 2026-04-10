@@ -35,6 +35,7 @@ const LogoutCallbackPage = lazy(() => import("./pages/LogoutCallbackPage"));
 
 // 보호 라우트는 즉시 로드 (가벼운 컴포넌트)
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 /** 페이지 로딩 중 표시되는 스피너 */
 function PageLoader() {
@@ -56,15 +57,19 @@ function App() {
           <Route path="/" element={<Index />} />
           <Route path="/register" element={<Register />} />
           <Route path="/pricing" element={<Pricing />} />
-          <Route path="/rider" element={<RiderDashboard />} />
-          <Route path="/rider/*" element={<RiderDashboard />} />
-          <Route path="/agency" element={<AgencyDashboard />} />
-          <Route path="/agency/verification" element={<AgencyVerification />} />
+
+          {/* 라이더 대시보드 — 로그인 필요 */}
+          <Route path="/rider" element={<ProtectedRoute><RiderDashboard /></ProtectedRoute>} />
+          <Route path="/rider/*" element={<ProtectedRoute><RiderDashboard /></ProtectedRoute>} />
+
+          {/* 지사 대시보드 — 로그인 필요 */}
+          <Route path="/agency" element={<ProtectedRoute><AgencyDashboard /></ProtectedRoute>} />
+          <Route path="/agency/verification" element={<ProtectedRoute><AgencyVerification /></ProtectedRoute>} />
 
           {/* #20 — 채용 공고 관리: wildcard보다 먼저 등록해야 라우팅이 정확함 */}
-          <Route path="/agency/listings" element={<AgencyListings />} />
+          <Route path="/agency/listings" element={<ProtectedRoute><AgencyListings /></ProtectedRoute>} />
 
-          <Route path="/agency/*" element={<AgencyDashboard />} />
+          <Route path="/agency/*" element={<ProtectedRoute><AgencyDashboard /></ProtectedRoute>} />
           <Route
             path="/admin"
             element={
@@ -87,14 +92,14 @@ function App() {
           <Route path="/privacy" element={<Privacy />} />
 
           {/* #4 — 라이더 서브 페이지 */}
-          <Route path="/rider/saved" element={<RiderSaved />} />
-          <Route path="/rider/applications" element={<RiderApplications />} />
-          <Route path="/rider/profile" element={<RiderProfile />} />
-          <Route path="/rider/support" element={<RiderSupport />} />
+          <Route path="/rider/saved" element={<ProtectedRoute><RiderSaved /></ProtectedRoute>} />
+          <Route path="/rider/applications" element={<ProtectedRoute><RiderApplications /></ProtectedRoute>} />
+          <Route path="/rider/profile" element={<ProtectedRoute><RiderProfile /></ProtectedRoute>} />
+          <Route path="/rider/support" element={<ProtectedRoute><RiderSupport /></ProtectedRoute>} />
 
           {/* #4 — 지사 서브 페이지 */}
-          <Route path="/agency/analytics" element={<AgencyAnalytics />} />
-          <Route path="/agency/promotions" element={<AgencyPromotions />} />
+          <Route path="/agency/analytics" element={<ProtectedRoute><AgencyAnalytics /></ProtectedRoute>} />
+          <Route path="/agency/promotions" element={<ProtectedRoute><AgencyPromotions /></ProtectedRoute>} />
 
           {/* #5 — 기존 파일 라우트 등록 */}
           <Route path="/jobs" element={<JobListings />} />
@@ -104,6 +109,7 @@ function App() {
           <Route path="/auth/logout/callback" element={<LogoutCallbackPage />} />
 
           <Route path="*" element={<NotFound />} />
+
         </Routes>
       </Suspense>
     </BrowserRouter>

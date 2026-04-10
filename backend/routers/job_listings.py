@@ -147,7 +147,7 @@ async def query_job_listingss(
         raise
     except Exception as e:
         logger.error(f"Error querying job_listingss: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.get("/all", response_model=Job_listingsListResponse)
@@ -157,6 +157,7 @@ async def query_job_listingss_all(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(20, ge=1, le=2000, description="Max number of records to return"),
     fields: str = Query(None, description="Comma-separated list of fields to return"),
+    _current_user: UserResponse = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     # Query job_listingss with filtering, sorting, and pagination without user limitation
@@ -184,7 +185,7 @@ async def query_job_listingss_all(
         raise
     except Exception as e:
         logger.error(f"Error querying job_listingss: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.get("/{id}", response_model=Job_listingsResponse)
@@ -209,7 +210,7 @@ async def get_job_listings(
         raise
     except Exception as e:
         logger.error(f"Error fetching job_listings {id}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.post("", response_model=Job_listingsResponse, status_code=201)
@@ -234,7 +235,7 @@ async def create_job_listings(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error creating job_listings: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.post("/batch", response_model=List[Job_listingsResponse], status_code=201)
@@ -319,7 +320,7 @@ async def update_job_listings(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error updating job_listings {id}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.delete("/batch")
@@ -370,4 +371,4 @@ async def delete_job_listings(
         raise
     except Exception as e:
         logger.error(f"Error deleting job_listings {id}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")

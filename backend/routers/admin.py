@@ -69,7 +69,7 @@ async def get_platform_stats(
         )
     except Exception as e:
         logger.error(f"Error fetching platform stats: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.get("/riders")
@@ -109,7 +109,7 @@ async def get_all_riders(
         return {"items": items, "total": total}
     except Exception as e:
         logger.error(f"Error fetching riders: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.get("/agencies")
@@ -152,7 +152,7 @@ async def get_all_agencies(
         return {"items": items, "total": total}
     except Exception as e:
         logger.error(f"Error fetching agencies: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.put("/riders/{rider_id}/status")
@@ -186,7 +186,7 @@ async def update_rider_status(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error updating rider status: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.put("/agencies/{agency_id}/status")
@@ -222,4 +222,4 @@ async def update_agency_status(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error updating agency status: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")

@@ -118,7 +118,7 @@ async def query_applicationss(
         raise
     except Exception as e:
         logger.error(f"Error querying applicationss: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.get("/all", response_model=ApplicationsListResponse)
@@ -128,6 +128,7 @@ async def query_applicationss_all(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(20, ge=1, le=2000, description="Max number of records to return"),
     fields: str = Query(None, description="Comma-separated list of fields to return"),
+    _current_user: UserResponse = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     # Query applicationss with filtering, sorting, and pagination without user limitation
@@ -155,7 +156,7 @@ async def query_applicationss_all(
         raise
     except Exception as e:
         logger.error(f"Error querying applicationss: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.get("/{id}", response_model=ApplicationsResponse)
@@ -180,7 +181,7 @@ async def get_applications(
         raise
     except Exception as e:
         logger.error(f"Error fetching applications {id}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.post("", response_model=ApplicationsResponse, status_code=201)
@@ -205,7 +206,7 @@ async def create_applications(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error creating applications: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.post("/batch", response_model=List[ApplicationsResponse], status_code=201)
@@ -290,7 +291,7 @@ async def update_applications(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error updating applications {id}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.delete("/batch")
@@ -341,4 +342,4 @@ async def delete_applications(
         raise
     except Exception as e:
         logger.error(f"Error deleting applications {id}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")

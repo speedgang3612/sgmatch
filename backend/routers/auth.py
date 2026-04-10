@@ -325,10 +325,11 @@ async def logout(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(
         HTTPBearer(auto_error=False)
     ),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Logout user - 현재 JWT 토큰을 블랙리스트에 등록하여 무효화한다."""
+    """Logout user - 현재 JWT 토큰을 DB 블랙리스트에 등록하여 무효화한다."""
     if credentials and credentials.scheme.lower() == "bearer":
-        revoke_token(credentials.credentials)
-        logger.info("JWT 토큰 명시적 폐기 (블랙리스트 등록 완료)")
+        await revoke_token(credentials.credentials, db)
+        logger.info("JWT 토큰 명시적 폐기 (DB 블랙리스트 등록 완료)")
     logout_url = build_logout_url()
     return {"redirect_url": logout_url}

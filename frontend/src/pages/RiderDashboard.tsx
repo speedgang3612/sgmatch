@@ -36,7 +36,7 @@ import {
   MatchRecord,
 } from "@/data/matchData";
 import { client } from "@/lib/api";
-import { getAPIBaseURL } from "@/lib/config";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { useSEO } from "@/hooks/useSEO";
 
@@ -81,7 +81,8 @@ function AgencyCard({ agency, matchedNames }: { agency: Agency; matchedNames: st
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState(false);
   const [bookmarked, setBookmarked] = useState(() => {
-    return localStorage.getItem(`bookmark_${agency.name}`) === "true";
+    const bookmarkKey = `bookmark_${user?.id ?? "guest"}_${agency.name}`;
+    return localStorage.getItem(bookmarkKey) === "true";
   });
   const stats = getAgencyStats(agency.name);
   const isMatched = matchedNames.includes(agency.name);
@@ -117,7 +118,8 @@ function AgencyCard({ agency, matchedNames }: { agency: Agency; matchedNames: st
   const handleBookmark = () => {
     const next = !bookmarked;
     setBookmarked(next);
-    localStorage.setItem(`bookmark_${agency.name}`, String(next));
+    const bookmarkKey = `bookmark_${user?.id ?? "guest"}_${agency.name}`;
+    localStorage.setItem(bookmarkKey, String(next));
   };
 
   return (
@@ -352,7 +354,7 @@ export default function RiderDashboard() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  // #19 — AI 매칭 추천 호출
+  // #19 — AI 매칭 추천 호출 (Option B: SDK client.ai.gentxt 사용)
   const handleAIRecommend = async () => {
     if (!selectedCity || !selectedDistrict) return;
     setAiLoading(true);
@@ -360,44 +362,32 @@ export default function RiderDashboard() {
     setAiError(null);
     try {
       const prompt = [
-        `라이더 매칭 AI 골대: ${selectedCity} ${selectedDistrict} 지역에서 \ubc30달 라이더를 찾고 있는 사람에게`,
-        `편한고 실용적인 지사 선택 팁과 주의사항을 3가지 이내로 안내해주세요.`,
-        `톤은 친근하고 말말하게. 한국어로. 200자 이내.`,
+        `라이더 매칭 요청: ${selectedCity} ${selectedDistrict} 지역에서 배달 라이더를 찾고 있는 사람에게`,
+        `편하고 실용적인 지사 선택 팁과 주의사항을 3가지 이내로 안내해주세요.`,
+        `톤은 친근하고 직접적으로. 한국어로. 200자 이내.`,
       ].join(" ");
 
-      const res = await fetch(`${getAPIBaseURL()}/api/v1/aihub/gentxt`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          model: "gpt-5-chat",
-          messages: [{ role: "user", content: prompt }],
-          stream: false,
-        }),
+      const res = await client.ai.gentxt({
+        model: "gpt-5-chat",
+        messages: [{ role: "user", content: prompt }],
+        stream: false,
       });
 
-      if (res.status === 503) {
-        setAiError("AI 기능을 사용하려면 관리자가 AI API 키를 설정해야 합니다.");
-        return;
-      }
-      if (!res.ok) {
-        throw new Error(`AI 응답 오류 (${res.status})`);
-      }
-
-      const data = await res.json();
-      const content =
-        data?.choices?.[0]?.message?.content ||
-        data?.content ||
-        data?.text ||
-        JSON.stringify(data);
+      const content = res?.data?.content ?? "";
+      if (!content) throw new Error("AI 응답이 비어 있습니다.");
       setAiResult(content);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "AI 추천 중 오류가 발생했습니다.";
-      setAiError(msg);
+      if (msg.includes("503") || msg.includes("Service Unavailable")) {
+        setAiError("AI 기능을 사용하려면 관리자가 AI API 키를 설정해야 합니다.");
+      } else {
+        setAiError(msg);
+      }
     } finally {
       setAiLoading(false);
     }
   };
+
 
 
   const handleCloseModal = () => {

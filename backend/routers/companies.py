@@ -120,7 +120,7 @@ async def query_companiess(
         raise
     except Exception as e:
         logger.error(f"Error querying companiess: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.get("/all", response_model=CompaniesListResponse)
@@ -130,6 +130,7 @@ async def query_companiess_all(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(20, ge=1, le=2000, description="Max number of records to return"),
     fields: str = Query(None, description="Comma-separated list of fields to return"),
+    _current_user: UserResponse = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     # Query companiess with filtering, sorting, and pagination without user limitation
@@ -157,7 +158,7 @@ async def query_companiess_all(
         raise
     except Exception as e:
         logger.error(f"Error querying companiess: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.get("/{id}", response_model=CompaniesResponse)
@@ -182,7 +183,7 @@ async def get_companies(
         raise
     except Exception as e:
         logger.error(f"Error fetching companies {id}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.post("", response_model=CompaniesResponse, status_code=201)
@@ -207,7 +208,7 @@ async def create_companies(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error creating companies: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.post("/batch", response_model=List[CompaniesResponse], status_code=201)
@@ -292,7 +293,7 @@ async def update_companies(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error updating companies {id}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.delete("/batch")
@@ -343,4 +344,4 @@ async def delete_companies(
         raise
     except Exception as e:
         logger.error(f"Error deleting companies {id}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")

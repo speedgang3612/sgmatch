@@ -8,6 +8,15 @@ from schemas.auth import UserResponse
 
 router = APIRouter(prefix="/api/v1/admin/settings", tags=["admin-settings"])
 
+# M-2: 응답에서 값을 마스킹할 민감한 키 목록
+_SENSITIVE_KEYS: set[str] = {
+    "JWT_SECRET_KEY",
+    "OIDC_CLIENT_SECRET",
+    "STRIPE_SECRET_KEY",
+    "DATABASE_URL",  # 접속 정보(비밀번호) 포함 가능
+}
+_MASK_VALUE = "***MASKED***"
+
 
 class EnvVariable(BaseModel):
     key: str
@@ -93,10 +102,11 @@ async def get_settings(current_user: UserResponse = Depends(get_admin_user)):
 
         frontend_descriptions = {"VITE_API_BASE_URL": "Base API URL", "VITE_FRONTEND_URL": "Frontend URL"}
 
-        # Build response data
+        # Build response data — mask sensitive key values (M-2)
         backend_config = {}
         for key, value in backend_vars.items():
-            backend_config[key] = EnvVariable(key=key, value=value, description=backend_descriptions.get(key, ""))
+            masked_value = _MASK_VALUE if key in _SENSITIVE_KEYS else value
+            backend_config[key] = EnvVariable(key=key, value=masked_value, description=backend_descriptions.get(key, ""))
 
         frontend_config = {}
         for key, value in frontend_vars.items():

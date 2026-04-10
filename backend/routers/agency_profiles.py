@@ -49,8 +49,9 @@ class Agency_profilesUpdateData(BaseModel):
     settlement_type: Optional[str] = None
     motorcycle_option: Optional[str] = None
     work_type: Optional[str] = None
-    verified: Optional[bool] = None
+    # verified 필드는 관리자 전용 (admin.py의 update_agency_status에서만 변경 가능)
     created_at: Optional[str] = None
+
 
 
 class Agency_profilesResponse(BaseModel):
@@ -141,7 +142,7 @@ async def query_agency_profiless(
         raise
     except Exception as e:
         logger.error(f"Error querying agency_profiless: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.get("/all", response_model=Agency_profilesListResponse)
@@ -151,6 +152,7 @@ async def query_agency_profiless_all(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(20, ge=1, le=2000, description="Max number of records to return"),
     fields: str = Query(None, description="Comma-separated list of fields to return"),
+    _current_user: UserResponse = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     # Query agency_profiless with filtering, sorting, and pagination without user limitation
@@ -178,7 +180,7 @@ async def query_agency_profiless_all(
         raise
     except Exception as e:
         logger.error(f"Error querying agency_profiless: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.get("/{id}", response_model=Agency_profilesResponse)
@@ -203,7 +205,7 @@ async def get_agency_profiles(
         raise
     except Exception as e:
         logger.error(f"Error fetching agency_profiles {id}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.post("", response_model=Agency_profilesResponse, status_code=201)
@@ -228,7 +230,7 @@ async def create_agency_profiles(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error creating agency_profiles: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.post("/batch", response_model=List[Agency_profilesResponse], status_code=201)
@@ -313,7 +315,7 @@ async def update_agency_profiles(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error updating agency_profiles {id}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.delete("/batch")
@@ -364,4 +366,4 @@ async def delete_agency_profiles(
         raise
     except Exception as e:
         logger.error(f"Error deleting agency_profiles {id}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")

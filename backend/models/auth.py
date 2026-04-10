@@ -23,3 +23,14 @@ class OIDCState(Base):
     code_verifier = Column(String(255), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class RevokedToken(Base):
+    """DB 기반 JWT 토큰 블랙리스트 — 서버 재시작 후에도 폐기 상태가 유지된다."""
+    __tablename__ = "revoked_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    token_hash = Column(String(64), unique=True, index=True, nullable=False)  # SHA-256 해시
+    revoked_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=True)  # JWT exp 기준 TTL
+
