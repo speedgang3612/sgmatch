@@ -1,9 +1,11 @@
 import logging
-from typing import Literal, Optional, Union
-from urllib.parse import urljoin
-
-import httpx
 import mimetypes
+from concurrent.futures import ThreadPoolExecutor
+from typing import Optional
+
+import boto3
+from botocore.config import Config
+from botocore.exceptions import BotoCoreError, ClientError
 from core.config import settings
 from schemas.storage import (
     BucketInfo,
@@ -23,197 +25,183 @@ from schemas.storage import (
 
 logger = logging.getLogger(__name__)
 
+# 동기 boto3 호출을 비동기 환경에서 처리하기 위한 스레드풀
+_executor = ThreadPoolExecutor(max_workers=4)
+
+
+def _get_s3_client():
+    """Cloudflare R2용 boto3 S3 클라이언트를 생성한다."""
+    return boto3.client(
+        "s3",
+        endpoint_url=settings.r2_endpoint_url,
+        aws_access_key_id=settings.r2_access_key_id,
+        aws_secret_access_key=settings.r2_secret_access_key,
+        config=Config(
+            signature_version="s3v4",
+            retries={"max_attempts": 3, "mode": "standard"},
+        ),
+    )
+
 
 class StorageService:
-    """Service for handling file upload and display with ObjectStorage service integration."""
+    """Cloudflare R2와 boto3를 통해 파일 업로드/다운로드를 처리하는 서비스."""
 
     def __init__(self):
-        if not settings.oss_service_url or not settings.oss_api_key:
-            raise ValueError("OSS service not configured. Set OSS_SERVICE_URL and OSS_API_KEY.")
-
-        self.headers = {
-            "Authorization": f"Bearer {settings.oss_api_key}",
-            "Content-Type": "application/json",
-        }
+        if not settings.r2_endpoint_url or not settings.r2_access_key_id or not settings.r2_secret_access_key:
+            raise ValueError(
+                "R2 설정이 누락되었습니다. R2_ENDPOINT_URL, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY를 확인하세요."
+            )
+        self.bucket_name = settings.r2_bucket_name
+        self.s3 = _get_s3_client()
 
     async def create_bucket(self, request: BucketRequest) -> BucketResponse:
-        """
-        Create a bucket name
-        """
-        endpoint = "api/v1/infra/client/oss/buckets"
-        payload = {"bucket_name": request.bucket_name, "visibility": request.visibility}
+        """버킷을 생성한다."""
         try:
-            result = await self._apost_oss_service(endpoint, payload)
-            return BucketResponse(bucket_name=result.get("bucket_name"), created_at=result.get("created_at"))
-        except Exception as e:
-            logger.error(f"Failed to create bucket: {e}")
+            self.s3.create_bucket(Bucket=request.bucket_name)
+            logger.info(f"Bucket created: {request.bucket_name}")
+            return BucketResponse(bucket_name=request.bucket_name, created_at=None)
+        except ClientError as e:
+            logger.error(f"Failed to create bucket {request.bucket_name}: {e}")
+            raise ValueError(str(e))
+        except (BotoCoreError, Exception) as e:
+            logger.error(f"Unexpected error creating bucket: {e}")
             raise
 
     async def list_buckets(self) -> BucketListResponse:
-        """
-        List buckets of the user
-        """
-        endpoint = "api/v1/infra/client/oss/buckets"
+        """전체 버킷 목록을 반환한다."""
         try:
-            result = await self._aget_oss_service(endpoint=endpoint, params={})
-            list_buckets = BucketListResponse()
-            for item in result["buckets"]:
-                list_buckets.buckets.append(BucketInfo(bucket_name=item["bucket_name"], visibility=item["visibility"]))
-            return list_buckets
-        except Exception as e:
+            response = self.s3.list_buckets()
+            result = BucketListResponse()
+            for b in response.get("Buckets", []):
+                result.buckets.append(BucketInfo(bucket_name=b["Name"], visibility="private"))
+            return result
+        except (ClientError, BotoCoreError) as e:
             logger.error(f"Failed to list buckets: {e}")
+            raise ValueError(str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error listing buckets: {e}")
             raise
 
     async def list_objects(self, request: OSSBaseModel) -> ObjectListResponse:
-        """
-        List objests from the bucket
-        """
-        endpoint = f"api/v1/infra/client/oss/buckets/{request.bucket_name}/objects"
+        """버킷 내 객체 목록을 반환한다."""
         try:
-            result = await self._aget_oss_service(endpoint=endpoint, params={})
-            list_objs = ObjectListResponse()
-            for item in result["objects"]:
-                list_objs.objects.append(
+            response = self.s3.list_objects_v2(Bucket=request.bucket_name)
+            result = ObjectListResponse()
+            for obj in response.get("Contents", []):
+                result.objects.append(
                     ObjectInfo(
                         bucket_name=request.bucket_name,
-                        object_key=item["key"],
-                        size=item["size"],
-                        last_modified=item["last_modified"],
-                        etag=item["etag"],
+                        object_key=obj["Key"],
+                        size=obj["Size"],
+                        last_modified=str(obj["LastModified"]),
+                        etag=obj.get("ETag", "").strip('"'),
                     )
                 )
-            return list_objs
+            return result
+        except ClientError as e:
+            logger.error(f"Failed to list objects in {request.bucket_name}: {e}")
+            raise ValueError(str(e))
         except Exception as e:
-            logger.error(f"Failed to list bucket objects: {e}")
+            logger.error(f"Unexpected error listing objects: {e}")
             raise
 
     async def get_object_info(self, request: ObjectRequest) -> ObjectInfo:
-        """
-        Get object metadata from the bucket
-        """
+        """객체 메타데이터를 반환한다."""
         try:
-            endpoint = f"api/v1/infra/client/oss/buckets/{request.bucket_name}/objects/metadata"
-            params = {"object_key": request.object_key}
-            result = await self._aget_oss_service(endpoint, params)
+            response = self.s3.head_object(Bucket=request.bucket_name, Key=request.object_key)
             return ObjectInfo(
                 bucket_name=request.bucket_name,
-                object_key=result["key"],
-                size=result["size"],
-                last_modified=result["last_modified"],
-                etag=result["etag"],
+                object_key=request.object_key,
+                size=response["ContentLength"],
+                last_modified=str(response["LastModified"]),
+                etag=response.get("ETag", "").strip('"'),
             )
+        except ClientError as e:
+            logger.error(f"Failed to get object info {request.object_key}: {e}")
+            raise ValueError(str(e))
         except Exception as e:
-            logger.error(f"Failed to get object metadata: {e}")
+            logger.error(f"Unexpected error getting object info: {e}")
             raise
 
-    async def rename_object(self, request: RenameRequest) -> dict:
-        endpoint = f"api/v1/infra/client/oss/buckets/{request.bucket_name}/objects/rename"
-        payload = {
-            "overwrite_key": request.overwrite_key,
-            "source_key": request.source_key,
-            "target_key": request.target_key,
-        }
+    async def rename_object(self, request: RenameRequest) -> RenameResponse:
+        """객체를 복사 후 원본 삭제하여 이름을 변경한다."""
         try:
-            await self._apost_oss_service(endpoint, payload)
+            copy_source = {"Bucket": request.bucket_name, "Key": request.source_key}
+            self.s3.copy_object(
+                CopySource=copy_source,
+                Bucket=request.bucket_name,
+                Key=request.target_key,
+                MetadataDirective="COPY",
+            )
+            self.s3.delete_object(Bucket=request.bucket_name, Key=request.source_key)
+            logger.info(f"Renamed {request.source_key} -> {request.target_key}")
             return RenameResponse(success=True)
-        except Exception as e:
+        except ClientError as e:
             logger.error(f"Failed to rename object: {e}")
+            raise ValueError(str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error renaming object: {e}")
             raise
 
     async def delete_object(self, request: ObjectRequest) -> DeleteResponse:
-        endpoint = f"api/v1/infra/client/oss/buckets/{request.bucket_name}/objects"
-        payload = {"object_keys": [request.object_key]}
+        """객체를 삭제한다."""
         try:
-            await self._adelete_oss_service(endpoint, payload)
+            self.s3.delete_object(Bucket=request.bucket_name, Key=request.object_key)
+            logger.info(f"Deleted object: {request.object_key} from {request.bucket_name}")
             return DeleteResponse(success=True)
+        except ClientError as e:
+            logger.error(f"Failed to delete object {request.object_key}: {e}")
+            raise ValueError(str(e))
         except Exception as e:
-            logger.error(f"Failed to rename object: {e}")
+            logger.error(f"Unexpected error deleting object: {e}")
             raise
 
     async def create_upload_url(self, request: FileUpDownRequest) -> FileUpDownResponse:
-        """
-        Create presigned URL for file upload with access URL.
-        """
-        endpoint = f"/api/v1/infra/client/oss/buckets/{request.bucket_name}/objects/upload_url"
-        payload = {"expires_in": 0, "object_key": request.object_key}
+        """파일 업로드용 presigned URL을 생성한다."""
         try:
-            result = await self._apost_oss_service(endpoint, payload)
-            # Format response according to ObjectStorage service response
-            return FileUpDownResponse(
-                upload_url=result.get("upload_url"),
-                expires_at=result.get("expires_at"),
+            content_type, _ = mimetypes.guess_type(str(request.object_key))
+            if not content_type:
+                content_type = "application/octet-stream"
+
+            upload_url = self.s3.generate_presigned_url(
+                "put_object",
+                Params={
+                    "Bucket": request.bucket_name,
+                    "Key": request.object_key,
+                    "ContentType": content_type,
+                },
+                ExpiresIn=3600,
             )
+            logger.info(f"Generated upload URL for {request.object_key}")
+            return FileUpDownResponse(upload_url=upload_url, expires_at=None)
+        except ClientError as e:
+            logger.error(f"Failed to generate upload URL: {e}")
+            raise ValueError(str(e))
         except Exception as e:
-            logger.error(f"Failed to create upload URL: {e}")
+            logger.error(f"Unexpected error generating upload URL: {e}")
             raise
 
     async def create_download_url(self, request: FileUpDownRequest) -> FileUpDownResponse:
-        """
-        Create presigned URL for file download with access URL.
-        """
-        endpoint = f"/api/v1/infra/client/oss/buckets/{request.bucket_name}/objects/download_url"
-        content_type, _ = mimetypes.guess_type(str(request.object_key))
-        if not content_type:
-            content_type = "application/octet-stream"
-        payload = {
-            "content_type": content_type,  # like "image/jpeg"
-            "expires_in": 0,
-            "object_key": request.object_key,
-        }
+        """파일 다운로드용 presigned URL을 생성한다."""
         try:
-            result = await self._apost_oss_service(endpoint, payload)
-            # Format response according to ObjectStorage service response
-            return FileUpDownResponse(
-                download_url=result.get("download_url"),
-                expires_at=result.get("expires_at"),
+            content_type, _ = mimetypes.guess_type(str(request.object_key))
+            if not content_type:
+                content_type = "application/octet-stream"
+
+            download_url = self.s3.generate_presigned_url(
+                "get_object",
+                Params={
+                    "Bucket": request.bucket_name,
+                    "Key": request.object_key,
+                    "ResponseContentType": content_type,
+                },
+                ExpiresIn=3600,
             )
-
+            logger.info(f"Generated download URL for {request.object_key}")
+            return FileUpDownResponse(download_url=download_url, expires_at=None)
+        except ClientError as e:
+            logger.error(f"Failed to generate download URL: {e}")
+            raise ValueError(str(e))
         except Exception as e:
-            logger.error(f"Failed to create upload URL: {e}")
-            raise
-
-    async def _aget_oss_service(self, endpoint: str, params: dict) -> dict:
-        return await self._arequest_oss_service("GET", endpoint, params=params)
-
-    async def _apost_oss_service(self, endpoint: str, payload: dict) -> Union[dict, list]:
-        return await self._arequest_oss_service("POST", endpoint, payload=payload)
-
-    async def _adelete_oss_service(self, endpoint: str, payload: dict) -> Union[dict, list]:
-        return await self._arequest_oss_service("DELETE", endpoint, payload=payload)
-
-    async def _arequest_oss_service(
-        self,
-        method: Literal["GET", "POST", "DELETE"],
-        endpoint: str,
-        params: Optional[dict] = None,
-        payload: Optional[dict] = None,
-    ) -> Union[dict, list]:
-        """统一的 OSS 服务请求方法"""
-        url = urljoin(settings.oss_service_url, endpoint)
-
-        try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                response = await client.request(
-                    method=method,
-                    url=url,
-                    headers=self.headers,
-                    params=params,
-                    json=payload,
-                )
-                response.raise_for_status()
-                result = response.json()
-
-                if result.get("code") != 0:
-                    logger.warning(f"ObjectStorage service error: {result}")
-                    error_msg = result.get("error", "Unknown error")
-                    message = result.get("message", "")
-                    raise ValueError(f"ObjectStorage service error: {error_msg}. {message}")
-
-                return result.get("data", [])
-        except httpx.HTTPStatusError as e:
-            error_msg = f"ObjectStorage service HTTP error: {e.response.status_code} - {e.response.text}"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        except Exception as e:
-            logger.error(f"Failed to call ObjectStorage service: {e}")
+            logger.error(f"Unexpected error generating download URL: {e}")
             raise

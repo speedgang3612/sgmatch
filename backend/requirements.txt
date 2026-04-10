@@ -28,6 +28,9 @@ greenlet
 # Redis (token blacklist)
 redis>=5.0.0
 
+# Cloudflare R2 (S3-compatible object storage)
+boto3>=1.34.0
+
 # auth module dependencies
 python-jose[cryptography]>=3.3.0
 
