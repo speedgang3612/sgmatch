@@ -125,7 +125,7 @@ export default function Index() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full mb-8">
 
             {/* 등록 지사 */}
-            <div className="bg-[#1A1A1A]/85 backdrop-blur-sm border-2 border-[#E63946]/30 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[150px]">
+            <div className="bg-[#1A1A1A]/85 backdrop-blur-sm border-2 border-[#E63946]/30 rounded-2xl p-6 sm:p-5 flex flex-col items-center justify-center min-h-[160px] sm:min-h-[150px]">
               <div className="w-10 h-10 bg-[#E63946]/15 rounded-xl flex items-center justify-center mb-3">
                 <svg width="20" height="20" fill="none" stroke="#E63946" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -135,12 +135,12 @@ export default function Index() {
               <p className="text-sm font-bold text-white mb-1 text-center">등록 지사</p>
               <p className="text-xs text-[#6B7280] mb-3 text-center">전국 파트너 지사</p>
               <span className="text-[11px] font-semibold text-[#E63946] bg-[#E63946]/10 border border-[#E63946]/25 rounded-full px-3 py-1">
-                Coming Soon
+                준비 중
               </span>
             </div>
 
             {/* 매칭 완료 */}
-            <div className="relative bg-[#1A1A1A]/85 backdrop-blur-sm border-2 border-[#E63946]/30 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[150px]">
+            <div className="relative bg-[#1A1A1A]/85 backdrop-blur-sm border-2 border-[#E63946]/30 rounded-2xl p-6 sm:p-5 flex flex-col items-center justify-center min-h-[160px] sm:min-h-[150px]">
               <div className="absolute -top-px left-1/2 -translate-x-1/2 bg-[#E63946] rounded-b-lg px-3 py-0.5">
                 <span className="text-[10px] font-bold text-white tracking-widest">MATCH</span>
               </div>
@@ -155,12 +155,12 @@ export default function Index() {
               <p className="text-sm font-bold text-white mb-1 text-center">매칭 완료</p>
               <p className="text-xs text-[#6B7280] mb-3 text-center">라이더 ↔ 지사 연결</p>
               <span className="text-[11px] font-semibold text-[#E63946] bg-[#E63946]/10 border border-[#E63946]/25 rounded-full px-3 py-1">
-                Coming Soon
+                준비 중
               </span>
             </div>
 
             {/* 활동 라이더 */}
-            <div className="bg-[#1A1A1A]/85 backdrop-blur-sm border-2 border-[#E63946]/30 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[150px]">
+            <div className="bg-[#1A1A1A]/85 backdrop-blur-sm border-2 border-[#E63946]/30 rounded-2xl p-6 sm:p-5 flex flex-col items-center justify-center min-h-[160px] sm:min-h-[150px]">
               <div className="w-10 h-10 bg-[#E63946]/15 rounded-xl flex items-center justify-center mb-3">
                 <svg width="22" height="22" fill="none" stroke="#E63946" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <circle cx="5.5" cy="17.5" r="2.5"/>
@@ -175,7 +175,7 @@ export default function Index() {
               <p className="text-sm font-bold text-white mb-1 text-center">활동 라이더</p>
               <p className="text-xs text-[#6B7280] mb-3 text-center">현재 활동 중인 라이더</p>
               <span className="text-[11px] font-semibold text-[#E63946] bg-[#E63946]/10 border border-[#E63946]/25 rounded-full px-3 py-1">
-                Coming Soon
+                준비 중
               </span>
             </div>
 
@@ -190,9 +190,9 @@ export default function Index() {
       </section>
 
       {/* 장점 */}
-      <section className="py-24 px-4">
+      <section className="py-16 px-5 sm:py-24 sm:px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-10 sm:mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
               왜 <span className="text-[#E63946]">SpeedGang Match</span>인가요?
             </h2>
@@ -220,7 +220,7 @@ export default function Index() {
             ].map((item, i) => (
               <div
                 key={i}
-                className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-8 hover:border-[#E63946]/50 transition-all duration-300 hover:-translate-y-1"
+                className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6 sm:p-8 hover:border-[#E63946]/50 transition-all duration-300 hover:-translate-y-1"
               >
                 <div className="w-14 h-14 bg-[#E63946]/10 rounded-xl flex items-center justify-center mb-6">
                   <item.icon size={28} className="text-[#E63946]" />
@@ -234,9 +234,9 @@ export default function Index() {
       </section>
 
       {/* 이용 방법 */}
-      <section className="py-24 px-4 bg-[#111111]">
+      <section className="py-16 px-5 sm:py-24 sm:px-4 bg-[#111111]">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-10 sm:mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
               이용 <span className="text-[#E63946]">방법</span>
             </h2>
@@ -284,9 +284,9 @@ export default function Index() {
       </section>
 
       {/* 지사 비교 미리보기 */}
-      <section className="py-24 px-4">
+      <section className="py-16 px-5 sm:py-24 sm:px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-10 sm:mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
               <span className="text-[#E63946]">지사</span> 비교하기
             </h2>
@@ -312,7 +312,7 @@ export default function Index() {
       </section>
 
       {/* 신규 지사 혜택 */}
-      <section className="py-24 px-4 bg-[#111111]">
+      <section className="py-16 px-5 sm:py-24 sm:px-4 bg-[#111111]">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
@@ -361,7 +361,7 @@ export default function Index() {
                   {[1, 2, 3].map((i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between bg-[#111111] rounded-xl p-4"
+                      className="flex items-center justify-between bg-[#111111] rounded-xl p-5 sm:p-4"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-[#E63946]/10 rounded-lg flex items-center justify-center">
@@ -373,7 +373,7 @@ export default function Index() {
                         </div>
                       </div>
                       <span className="text-xs font-medium px-2.5 py-1 rounded-full border bg-amber-500/20 text-amber-400 border-amber-500/30">
-                        Coming Soon
+                        등록 대기 중
                       </span>
                     </div>
                   ))}
@@ -385,14 +385,14 @@ export default function Index() {
       </section>
 
       {/* 미래 비전 */}
-      <section className="relative py-24 px-4 overflow-hidden">
+      <section className="relative py-16 px-5 sm:py-24 sm:px-4 overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center opacity-20"
           style={{ backgroundImage: `url(${FUTURE_IMG})` }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0A] via-transparent to-[#0A0A0A]" />
         <div className="relative z-10 max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-10 sm:mb-16">
             <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-full px-4 py-2 mb-5">
               <Sparkles size={14} className="text-amber-400 animate-pulse" />
               <span className="text-amber-400 text-sm font-bold">서비스 준비 중</span>
@@ -440,12 +440,12 @@ export default function Index() {
             ].map((item, i) => (
               <div
                 key={i}
-                className="relative bg-[#1A1A1A]/80 backdrop-blur-sm border border-[#2A2A2A] rounded-2xl p-6 text-center hover:border-amber-500/30 transition-all duration-300 group"
+                className="relative bg-[#1A1A1A]/80 backdrop-blur-sm border border-[#2A2A2A] rounded-2xl p-7 sm:p-6 text-center hover:border-amber-500/30 transition-all duration-300 group"
               >
-                {/* Coming Soon 배지 */}
+                {/* 준비 중 배지 */}
                 <div className="absolute top-3 right-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
-                    Coming Soon
+                  <span className="text-[10px] font-bold tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                    준비 중
                   </span>
                 </div>
                 <div className="w-14 h-14 bg-[#E63946]/10 rounded-xl flex items-center justify-center mx-auto mb-5 group-hover:bg-[#E63946]/20 transition-colors">
@@ -472,7 +472,7 @@ export default function Index() {
       </section>
 
       {/* 정산 프로그램 소개 */}
-      <section id="settlement-program" className="py-24 px-4 scroll-mt-20">
+      <section id="settlement-program" className="py-16 px-5 sm:py-24 sm:px-4 scroll-mt-20">
         <div className="max-w-5xl mx-auto">
           <div className="relative bg-gradient-to-br from-[#1A1A1A] to-[#111111] border border-[#2A2A2A] rounded-3xl p-8 sm:p-12 overflow-hidden">
             {/* 배경 장식 */}
@@ -585,7 +585,7 @@ export default function Index() {
       </section>
 
       {/* 최종 CTA */}
-      <section className="py-24 px-4 bg-[#111111]">
+      <section className="py-16 px-5 sm:py-24 sm:px-4 bg-[#111111]">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl font-bold mb-6">
             <span className="text-[#E63946]">오늘</span> 바로 시작하세요
