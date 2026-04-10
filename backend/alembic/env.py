@@ -4,8 +4,13 @@
 
 import asyncio
 import importlib
+import os
 import pkgutil
 from logging.config import fileConfig
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 import models
 from alembic import context
@@ -34,7 +39,12 @@ def alembic_include_object(object, name, type_, reflected, compare_to):
 
 
 async def run_migrations_online():
-    connectable = create_async_engine(config.get_main_option("sqlalchemy.url"), poolclass=pool.NullPool)
+    database_url = os.environ.get("DATABASE_URL", "")
+    connectable = create_async_engine(
+        database_url,
+        poolclass=pool.NullPool,
+        connect_args={"ssl": False},
+    )
     async with connectable.connect() as connection:
         await connection.run_sync(
             lambda sync_conn: context.configure(

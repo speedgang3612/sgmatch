@@ -12,4 +12,5 @@ class Applications(Base):
     agency_name = Column(String, nullable=True)
     rider_name = Column(String, nullable=True)
     status = Column(String, nullable=True)
+    applied_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=True)

@@ -129,6 +129,11 @@ class DatabaseManager:
                 engine_kwargs["pool_timeout"] = 30  # Connection acquisition timeout (30 seconds)
                 logger.info("Using QueuePool with connection pooling for non-Lambda environment")
 
+            # For PostgreSQL with asyncpg, disable SSL context loading to avoid
+            # Windows non-ASCII path bug in OpenSSL (ssl.load_cert_chain OSError 42)
+            if "asyncpg" in database_url or "postgresql" in database_url:
+                engine_kwargs["connect_args"] = {"ssl": False}
+
             self.engine = create_async_engine(database_url, **engine_kwargs)
             logger.info("Database engine created successfully")
 

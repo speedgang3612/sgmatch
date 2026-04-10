@@ -1,5 +1,5 @@
 from core.database import Base
-from sqlalchemy import Boolean, Column, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
 
 
 class Agency_profiles(Base):
@@ -20,4 +20,4 @@ class Agency_profiles(Base):
     motorcycle_option = Column(String, nullable=True)
     work_type = Column(String, nullable=True)
     verified = Column(Boolean, nullable=True)
-    created_at = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=True)

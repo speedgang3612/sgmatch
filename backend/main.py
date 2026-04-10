@@ -6,6 +6,11 @@ import traceback
 from contextlib import asynccontextmanager
 from datetime import datetime
 
+from dotenv import load_dotenv
+
+# Load .env before Settings initialization
+load_dotenv()
+
 from core.config import settings
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
