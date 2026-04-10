@@ -131,31 +131,23 @@ class DatabaseManager:
 
             # DB 종류별 connect_args 분기 처리
             # - SQLite: check_same_thread=False (멀티스레드 환경 허용)
-            # - PostgreSQL/asyncpg:
-            #     - SSL: prod(Render) → "require", dev(로컬) → False (Windows OpenSSL 경로 버그 우회)
-            #     - prepared_statement_cache_size=0: asyncpg 클라이언트 사이드 캐시 비활성화
-            #     - server_settings.statement_cache_size="0": Supavisor(Session Pooler) 서버 사이드 캐시 비활성화
-            #       → Supabase 공식 문서 및 GitHub Discussion #28239 기준 "Tenant or user not found" 해결책
+            # - PostgreSQL/asyncpg: SSL require 강제 + Supavisor 캐시 비활성화 (항상 적용)
             if "sqlite" in database_url:
                 # SQLite 전용: 멀티스레드 환경에서 연결 공유 허용
                 engine_kwargs["connect_args"] = {"check_same_thread": False}
                 logger.info("SQLite connect_args: check_same_thread=False")
             elif "asyncpg" in database_url or "postgresql" in database_url:
-                # PostgreSQL 전용: raw_userids 등 asyncpg 미지원 옵션 절대 포함하지 않음
-                is_prod = os.environ.get("ENVIRONMENT", "dev").lower() == "prod"
-                ssl_setting = "require" if is_prod else False
+                # PostgreSQL 전용: SSL require 항상 강제 적용
                 connect_args: dict = {
-                    "ssl": ssl_setting,
-                    "prepared_statement_cache_size": 0,  # asyncpg 클라이언트 캐시 비활성화
+                    "ssl": "require",
+                    "prepared_statement_cache_size": 0,
+                    "server_settings": {"statement_cache_size": "0"},
                 }
-                if is_prod:
-                    # Supavisor에게 서버 사이드 statement 캐시 비활성화 전달 (문자열 "0" 필수)
-                    connect_args["server_settings"] = {"statement_cache_size": "0"}
                 engine_kwargs["connect_args"] = connect_args
                 logger.info(
-                    f"PostgreSQL connect_args: ssl={'require' if is_prod else 'disabled'}, "
-                    f"prepared_statement_cache_size=0, "
-                    f"server_settings.statement_cache_size={'0 (Supavisor)' if is_prod else 'skipped (local dev)'}"
+                    "PostgreSQL connect_args: ssl=require, "
+                    "prepared_statement_cache_size=0, "
+                    "server_settings.statement_cache_size=0 (Supavisor)"
                 )
 
             # 캐시 무효화용 더미 주석 - 2026-04-10
