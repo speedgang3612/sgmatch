@@ -29,6 +29,7 @@ class AIHubService:
         self.client = AsyncOpenAI(
             api_key=settings.app_ai_key,
             base_url=settings.app_ai_base_url.rstrip("/"),
+            timeout=30.0,  # 치명-3: 최대 30초 대기 — 무한 hang 방지
         )
 
     def _convert_message(self, msg) -> dict:
@@ -244,10 +245,11 @@ class AIHubService:
                     n=request.n,
                 )
 
-            revised_prompt = response.data[0].revised_prompt if response.data else None
-
+            # 심각-2: 빈값 체크를 response.data[0] 접근 이전에 수행 (IndexError 방지)
             if not response.data:
                 raise RuntimeError("Image generation returned empty result")
+
+            revised_prompt = response.data[0].revised_prompt
 
             # Prefer URL to avoid huge response bodies; fallback to base64 data URI.
             images = [self._extract_image_ref(item) for item in response.data]

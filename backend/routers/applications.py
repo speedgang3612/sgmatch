@@ -1,11 +1,11 @@
 import json
 import logging
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from datetime import datetime, date
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
@@ -23,18 +23,20 @@ router = APIRouter(prefix="/api/v1/entities/applications", tags=["applications"]
 class ApplicationsData(BaseModel):
     """Entity data schema (for create/update)"""
     job_listing_id: int = None
-    agency_name: str = None
-    rider_name: str = None
-    status: str = None
+    agency_name: str = Field(None, max_length=100)   # 치명-7
+    rider_name: str = Field(None, max_length=100)    # 치명-7
+    status: Optional[Literal["pending", "reviewed", "accepted", "rejected"]] = None  # 심각-3
+    applied_at: Optional[datetime] = None            # 주의-4: 프론트가 전송하는 실제 신청 시각
     created_at: Optional[datetime] = None
 
 
 class ApplicationsUpdateData(BaseModel):
     """Update entity data (partial updates allowed)"""
     job_listing_id: Optional[int] = None
-    agency_name: Optional[str] = None
-    rider_name: Optional[str] = None
-    status: Optional[str] = None
+    agency_name: Optional[str] = Field(None, max_length=100)  # 치명-7
+    rider_name: Optional[str] = Field(None, max_length=100)   # 치명-7
+    status: Optional[Literal["pending", "reviewed", "accepted", "rejected"]] = None  # 심각-3
+    applied_at: Optional[datetime] = None  # 주의-4
     created_at: Optional[datetime] = None
 
 
@@ -232,7 +234,7 @@ async def create_applicationss_batch(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error in batch create: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Batch create failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch operation failed")
 
 
 @router.put("/batch", response_model=List[ApplicationsResponse])
@@ -260,7 +262,7 @@ async def update_applicationss_batch(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error in batch update: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Batch update failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch operation failed")
 
 
 @router.put("/{id}", response_model=ApplicationsResponse)
@@ -317,7 +319,7 @@ async def delete_applicationss_batch(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error in batch delete: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Batch delete failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch operation failed")
 
 
 @router.delete("/{id}")

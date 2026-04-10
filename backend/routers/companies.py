@@ -234,7 +234,7 @@ async def create_companiess_batch(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error in batch create: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Batch create failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch operation failed")
 
 
 @router.put("/batch", response_model=List[CompaniesResponse])
@@ -262,7 +262,7 @@ async def update_companiess_batch(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error in batch update: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Batch update failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch operation failed")
 
 
 @router.put("/{id}", response_model=CompaniesResponse)
@@ -319,7 +319,7 @@ async def delete_companiess_batch(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error in batch delete: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Batch delete failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch operation failed")
 
 
 @router.delete("/{id}")

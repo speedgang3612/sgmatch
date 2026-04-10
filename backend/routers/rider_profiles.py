@@ -5,7 +5,7 @@ from typing import List, Optional
 from datetime import datetime, date
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
@@ -22,8 +22,8 @@ router = APIRouter(prefix="/api/v1/entities/rider_profiles", tags=["rider_profil
 # ---------- Pydantic Schemas ----------
 class Rider_profilesData(BaseModel):
     """Entity data schema (for create/update)"""
-    name: str
-    phone: str
+    name: str = Field(..., max_length=100)  # 치명-7
+    phone: str = Field(..., max_length=20)  # 치명-7
     city: str = None
     district: str = None
     experience: str = None
@@ -36,8 +36,8 @@ class Rider_profilesData(BaseModel):
 
 class Rider_profilesUpdateData(BaseModel):
     """Update entity data (partial updates allowed)"""
-    name: Optional[str] = None
-    phone: Optional[str] = None
+    name: Optional[str] = Field(None, max_length=100)  # 치명-7
+    phone: Optional[str] = Field(None, max_length=20)  # 치명-7
     city: Optional[str] = None
     district: Optional[str] = None
     experience: Optional[str] = None
@@ -230,24 +230,21 @@ async def create_rider_profiless_batch(
     current_user: UserResponse = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create multiple rider_profiless in a single request"""
+    """Create multiple rider_profiless in a single atomic transaction"""
     logger.debug(f"Batch creating {len(request.items)} rider_profiless")
-    
+
     service = Rider_profilesService(db)
-    results = []
-    
     try:
-        for item_data in request.items:
-            result = await service.create(item_data.model_dump(), user_id=str(current_user.id))
-            if result:
-                results.append(result)
-        
+        # 치명-2: batch_create로 단일 트랜잭션 보장
+        results = await service.batch_create(
+            [item.model_dump() for item in request.items],
+            user_id=str(current_user.id),
+        )
         logger.info(f"Batch created {len(results)} rider_profiless successfully")
         return results
     except Exception as e:
-        await db.rollback()
         logger.error(f"Error in batch create: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Batch create failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch operation failed")  # 심각-1
 
 
 @router.put("/batch", response_model=List[Rider_profilesResponse])
@@ -258,24 +255,23 @@ async def update_rider_profiless_batch(
 ):
     """Update multiple rider_profiless in a single request (requires ownership)"""
     logger.debug(f"Batch updating {len(request.items)} rider_profiless")
-    
+
     service = Rider_profilesService(db)
     results = []
-    
+
     try:
         for item in request.items:
-            # Only include non-None values for partial updates
             update_dict = {k: v for k, v in item.updates.model_dump().items() if v is not None}
             result = await service.update(item.id, update_dict, user_id=str(current_user.id))
             if result:
                 results.append(result)
-        
+        await db.commit()
         logger.info(f"Batch updated {len(results)} rider_profiless successfully")
         return results
     except Exception as e:
         await db.rollback()
         logger.error(f"Error in batch update: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Batch update failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch operation failed")  # 심각-1
 
 
 @router.put("/{id}", response_model=Rider_profilesResponse)
@@ -317,22 +313,21 @@ async def delete_rider_profiless_batch(
 ):
     """Delete multiple rider_profiless by their IDs (requires ownership)"""
     logger.debug(f"Batch deleting {len(request.ids)} rider_profiless")
-    
+
     service = Rider_profilesService(db)
     deleted_count = 0
-    
+
     try:
         for item_id in request.ids:
             success = await service.delete(item_id, user_id=str(current_user.id))
             if success:
                 deleted_count += 1
-        
         logger.info(f"Batch deleted {deleted_count} rider_profiless successfully")
         return {"message": f"Successfully deleted {deleted_count} rider_profiless", "deleted_count": deleted_count}
     except Exception as e:
         await db.rollback()
         logger.error(f"Error in batch delete: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Batch delete failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch operation failed")  # 심각-1
 
 
 @router.delete("/{id}")

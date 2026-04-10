@@ -1,6 +1,6 @@
 import hashlib
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from core.auth import AccessTokenError, decode_access_token
@@ -9,7 +9,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from models.auth import RevokedToken
 from schemas.auth import UserResponse
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -37,13 +37,49 @@ async def revoke_token(token: str, db: AsyncSession, expires_at: Optional[dateti
         await db.commit()
 
 
+# 주의-2: 만료 토큰 정리 카운터 (100 요청마다 1회 실행)
+_revoke_check_counter: int = 0
+_CLEANUP_INTERVAL: int = 100
+
+
+async def _cleanup_expired_tokens(db: AsyncSession) -> None:
+    """만료된 토큰을 DB에서 삭제한다 (주기적 청소)."""
+    try:
+        await db.execute(
+            delete(RevokedToken).where(
+                RevokedToken.expires_at.isnot(None),
+                RevokedToken.expires_at < datetime.now(timezone.utc),
+            )
+        )
+        await db.commit()
+    except Exception as e:
+        logger.warning("만료 토큰 정리 실패: %s", e)
+
+
 async def is_token_revoked(token: str, db: AsyncSession) -> bool:
-    """토큰이 DB 블랙리스트에 있는지 확인한다."""
-    token_hash = _hash_token(token)
-    result = await db.execute(
-        select(RevokedToken).where(RevokedToken.token_hash == token_hash)
-    )
-    return result.scalar_one_or_none() is not None
+    """토큰이 DB 블랙리스트에 있는지 확인한다.
+
+    DB 오류 시 fail-open 처리 (False 반환) — JWT 서명 검증이 1차 방어선.
+    """
+    global _revoke_check_counter
+    _revoke_check_counter += 1
+
+    # 주의-2: 100 요청마다 만료 토큰 정리
+    if _revoke_check_counter >= _CLEANUP_INTERVAL:
+        _revoke_check_counter = 0
+        await _cleanup_expired_tokens(db)
+
+    try:
+        token_hash = _hash_token(token)
+        result = await db.execute(
+            select(RevokedToken).where(RevokedToken.token_hash == token_hash)
+        )
+        return result.scalar_one_or_none() is not None
+    except Exception as e:
+        # 치명-1: DB 장애 시 fail-open — 서비스 가용성 유지
+        # JWT 서명과 만료 시간은 decode_access_token()에서 별도 검증됨
+        logger.warning("DB 오류로 토큰 블랙리스트 확인 불가, fail-open 처리: %s", e)
+        return False
 
 
 async def get_bearer_token(

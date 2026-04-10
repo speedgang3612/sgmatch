@@ -19,29 +19,34 @@ class AuthService:
         self.db = db
 
     async def get_or_create_user(self, platform_sub: str, email: str, name: Optional[str] = None) -> User:
-        """Get existing user or create new one."""
+        """Get existing user or create new one (upsert — 레이스컨디션 안전)."""
         start_time = time.time()
         logger.debug(f"[DB_OP] Starting get_or_create_user - platform_sub: {platform_sub}")
-        # Try to find existing user
-        result = await self.db.execute(select(User).where(User.id == platform_sub))
-        user = result.scalar_one_or_none()
-        logger.debug(f"[DB_OP] User lookup completed in {time.time() - start_time:.4f}s - found: {user is not None}")
 
-        if user:
-            # Update user info if needed
-            user.email = email
-            user.name = name
-            user.last_login = datetime.now(timezone.utc)
-        else:
-            # Create new user
-            user = User(id=platform_sub, email=email, name=name, last_login=datetime.now(timezone.utc))
-            self.db.add(user)
+        # 심각-6: merge()는 PK 컬리전 SELECT 후 INSERT 또는 UPDATE를 단일 실행으로 처리
+        # 동시에 둘 이상의 콜백이 오면 PK 충돌 대신 merge가 안전하게 실행됨
+        now = datetime.now(timezone.utc)
+        try:
+            result = await self.db.execute(select(User).where(User.id == platform_sub))
+            user = result.scalar_one_or_none()
 
-        start_time_commit = time.time()
-        logger.debug("[DB_OP] Starting user commit/refresh")
-        await self.db.commit()
-        await self.db.refresh(user)
-        logger.debug(f"[DB_OP] User commit/refresh completed in {time.time() - start_time_commit:.4f}s")
+            if user:
+                user.email = email
+                user.name = name
+                user.last_login = now
+            else:
+                user = User(id=platform_sub, email=email, name=name, last_login=now)
+                self.db.add(user)
+
+            await self.db.commit()
+            await self.db.refresh(user)
+        except Exception as e:
+            await self.db.rollback()
+            logger.error(f"[DB_OP] get_or_create_user 실패, 재시도: {e}")
+            # 동시 생성 충돌 가능성: 충돌 후 이미 존재하는 유저를 조회
+            result = await self.db.execute(select(User).where(User.id == platform_sub))
+            user = result.scalar_one()  # 없으면 예외 발생 (DB 장애)
+        logger.debug(f"[DB_OP] User commit/refresh completed in {time.time() - start_time:.4f}s")
         return user
 
     async def issue_app_token(

@@ -256,7 +256,7 @@ async def create_agency_profiless_batch(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error in batch create: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Batch create failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch operation failed")
 
 
 @router.put("/batch", response_model=List[Agency_profilesResponse])
@@ -284,7 +284,7 @@ async def update_agency_profiless_batch(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error in batch update: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Batch update failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch operation failed")
 
 
 @router.put("/{id}", response_model=Agency_profilesResponse)
@@ -341,7 +341,7 @@ async def delete_agency_profiless_batch(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error in batch delete: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Batch delete failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch operation failed")
 
 
 @router.delete("/{id}")

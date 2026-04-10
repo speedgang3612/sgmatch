@@ -118,7 +118,8 @@ async def callback(
         )
 
     if error:
-        return redirect_with_error(f"OIDC error: {error}")
+        logger.warning("[callback] OIDC provider error: %s", error)  # 치명-6: 원본 에러는 로그에만
+        return redirect_with_error("로그인 처리 중 오류가 발생한습니다. 다시 시도해 주세요.")
 
     if not code or not state:
         return redirect_with_error("Missing code or state parameter")
@@ -152,7 +153,8 @@ async def callback(
 
         token_url = f"{settings.oidc_issuer_url}/token"
         try:
-            async with httpx.AsyncClient() as client:
+            # 치명-5: OIDC 토큰 교환 timeout 10초 명시
+            async with httpx.AsyncClient(timeout=10.0) as client:
                 token_response = await client.post(
                     token_url,
                     data=token_data,
@@ -165,16 +167,17 @@ async def callback(
                 str(e),
                 exc_info=True,
             )
-            return redirect_with_error(f"Token exchange failed: {e}")
+            # 치명-6: 내부 에러는 로그에만, 사용자에게는 일반 메시지
+            return redirect_with_error("로그인 처리 중 오류가 발생한습니다. 다시 시도해 주세요.")
 
         if token_response.status_code != 200:
             logger.error(
                 "[callback] Token exchange failed: url=%s, status_code=%s, response=%s",
                 token_url,
                 token_response.status_code,
-                token_response.text,
+                token_response.text,  # 치명-6: 로그에만 원문 노출
             )
-            return redirect_with_error(f"Token exchange failed: {token_response.text}")
+            return redirect_with_error("로그인 처리 중 오류가 발생한습니다. 다시 시도해 주세요.")
 
         tokens = token_response.json()
 
@@ -238,7 +241,8 @@ async def exchange_platform_token(
     logger.debug(f"[token/exchange] Verifying token with issuer: {verify_url}")
 
     try:
-        async with httpx.AsyncClient() as client:
+        # 치명-5: OIDC 토큰 검증 timeout 10초 명시
+        async with httpx.AsyncClient(timeout=10.0) as client:
             verify_response = await client.post(
                 verify_url,
                 json={"platform_token": payload.platform_token},
@@ -327,9 +331,14 @@ async def logout(
     ),
     db: AsyncSession = Depends(get_db),
 ):
-    """Logout user - 현재 JWT 토큰을 DB 블랙리스트에 등록하여 무효화한다."""
+    """로그아웃 - 현재 JWT 토큰을 DB 블랙리스트에 등록하여 무효화한다."""
     if credentials and credentials.scheme.lower() == "bearer":
-        await revoke_token(credentials.credentials, db)
-        logger.info("JWT 토큰 명시적 폐기 (DB 블랙리스트 등록 완료)")
+        try:
+            # 심각-4: revoke_token 실패해도 로그아웃 흙름은 계속 진행
+            await revoke_token(credentials.credentials, db)
+            logger.info("JWT 토큰 명시적 폐기 (DB 블랙리스트 등록 완료)")
+        except Exception as e:
+            logger.error("토큰 폐기 실패 (DB 오류): %s", e)
+            # 실패해도 로그아웃 URL은 반환 — 토큰 만료 시 자동 무효화됨
     logout_url = build_logout_url()
     return {"redirect_url": logout_url}

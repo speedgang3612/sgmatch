@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime
 from typing import List, Optional
 
 
@@ -35,7 +36,7 @@ class Job_listingsData(BaseModel):
     work_time: str = None
     pay_per_delivery: str = None
     status: str = None
-    created_at: str = None
+    created_at: Optional[datetime] = None  # 심각-9: str → datetime
 
 
 class Job_listingsUpdateData(BaseModel):
@@ -54,7 +55,7 @@ class Job_listingsUpdateData(BaseModel):
     work_time: Optional[str] = None
     pay_per_delivery: Optional[str] = None
     status: Optional[str] = None
-    created_at: Optional[str] = None
+    created_at: Optional[datetime] = None  # 심각-9
 
 
 class Job_listingsResponse(BaseModel):
@@ -261,7 +262,7 @@ async def create_job_listingss_batch(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error in batch create: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Batch create failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch operation failed")
 
 
 @router.put("/batch", response_model=List[Job_listingsResponse])
@@ -289,7 +290,7 @@ async def update_job_listingss_batch(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error in batch update: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Batch update failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch operation failed")
 
 
 @router.put("/{id}", response_model=Job_listingsResponse)
@@ -346,7 +347,7 @@ async def delete_job_listingss_batch(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error in batch delete: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Batch delete failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Batch operation failed")
 
 
 @router.delete("/{id}")

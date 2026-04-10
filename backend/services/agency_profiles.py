@@ -32,6 +32,25 @@ class Agency_profilesService:
             logger.error(f"Error creating agency_profiles: {str(e)}")
             raise
 
+
+    async def batch_create(self, items, user_id=None):
+        """치명-2: 단일 트랜잭션으로 생성 — 하나라도 실패하면 전체 rollback."""
+        try:
+            objs = []
+            for data in items:
+                if user_id:
+                    data = dict(data)
+                    data['user_id'] = user_id
+                obj = Agency_profiles(**data)
+                self.db.add(obj)
+                objs.append(obj)
+            await self.db.commit()
+            for obj in objs:
+                await self.db.refresh(obj)
+            return objs
+        except Exception as e:
+            await self.db.rollback()
+            raise
     async def check_ownership(self, obj_id: int, user_id: str) -> bool:
         """Check if user owns this record"""
         try:
@@ -72,6 +91,9 @@ class Agency_profilesService:
             
             if query_dict:
                 for field, value in query_dict.items():
+                    # 치명-4: 내부 필드 주입 차단
+                    if field in ("id", "user_id"):
+                        continue
                     if hasattr(Agency_profiles, field):
                         query = query.where(getattr(Agency_profiles, field) == value)
                         count_query = count_query.where(getattr(Agency_profiles, field) == value)

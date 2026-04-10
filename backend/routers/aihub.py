@@ -129,7 +129,8 @@ async def generate_text(
                         yield json.dumps({"content": content})
                 except Exception as e:
                     logger.error(f"Stream error: {e}")
-                    yield json.dumps({"content": f"[ERROR] {extract_error_message(e)}"})
+                    # 심각-5: 내부 에러 메시지 숨김 — AI Hub 정보 외부 노출 방지
+                    yield json.dumps({"content": "[ERROR] AI 응답 처리 중 오류가 발생했습니다."})
                 finally:
                     yield "[DONE]"
 

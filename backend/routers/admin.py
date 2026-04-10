@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 # ---------- Pydantic Schemas ----------
 class RiderStatusUpdate(BaseModel):
-    status: str
+    status: Literal["pending", "active", "inactive", "rejected"]  # 주의-1/6: 유효 값 제약
 
 
 class AgencyStatusUpdate(BaseModel):

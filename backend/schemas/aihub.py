@@ -71,7 +71,7 @@ class GenTxtResponse(BaseModel):
 class GenImgRequest(BaseModel):
     """Generate Image request parameters."""
 
-    prompt: str = Field(..., description="Prompt for image generation.")
+    prompt: str = Field(..., max_length=2000, description="Prompt for image generation.")  # 치명-7
     image: Optional[Union[str, List[str]]] = Field(
         default=None,
         description=(

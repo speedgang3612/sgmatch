@@ -80,6 +80,7 @@ function AgencyCard({ agency, matchedNames }: { agency: Agency; matchedNames: st
   const [expanded, setExpanded] = useState(false);
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState(false);
+  const [applyError, setApplyError] = useState<string | null>(null); // 심각-8: 인라인 에러
   const [bookmarked, setBookmarked] = useState(() => {
     const bookmarkKey = `bookmark_${user?.id ?? "guest"}_${agency.name}`;
     return localStorage.getItem(bookmarkKey) === "true";
@@ -93,8 +94,9 @@ function AgencyCard({ agency, matchedNames }: { agency: Agency; matchedNames: st
       navigate("/register");
       return;
     }
-    if (applying) return;
+    if (applying || applied) return; // 심각-8: 진행 중이거나 이미 완료된 경우 제2 클릭 차단
     setApplying(true);
+    setApplyError(null);
     try {
       await client.entities.applications.create({
         rider_name: user.name || user.email || "라이더",
@@ -104,11 +106,11 @@ function AgencyCard({ agency, matchedNames }: { agency: Agency; matchedNames: st
         city: agency.city,
         district: agency.district,
       });
-      // 성공 피드백 (alert 대신 인라인 표시)
-      setApplied(true);
+      setApplied(true); // 성공 시에만 true — 버튼 비활성화되어 중복 불가
     } catch (err) {
       console.error("지원 실패:", err);
-      alert("지원 중 오류가 발생했습니다. 다시 시도해 주세요.");
+      // 심각-8: alert 제거 → 인라인 에러 메시지
+      setApplyError("지원 중 오류가 발생했습니다. 다시 시도해 주세요.");
     } finally {
       setApplying(false);
     }
@@ -229,6 +231,11 @@ function AgencyCard({ agency, matchedNames }: { agency: Agency; matchedNames: st
         </Button>
       </div>
 
+      {/* 심각-8: 지원 실패 인라인 에러 메시지 */}
+      {applyError && (
+        <p className="text-rose-400 text-xs text-center mb-2">{applyError}</p>
+      )}
+
       {/* 리뷰 토글 */}
       <button
         onClick={() => setExpanded(!expanded)}
@@ -256,6 +263,7 @@ export default function RiderDashboard() {
   // #6 — 지사 목록: 백엔드 API 연결
   const [agencies, setAgencies] = useState<Agency[]>([]);
   const [agenciesLoading, setAgenciesLoading] = useState(false);
+  const [agenciesError, setAgenciesError] = useState<string | null>(null); // 심각-7
 
   // #8 — 매칭 데이터: 백엔드 API 연결
   const [matches, setMatches] = useState<MatchRecord[]>([]);
@@ -268,6 +276,7 @@ export default function RiderDashboard() {
     const fetchAgencies = async () => {
       try {
         setAgenciesLoading(true);
+        setAgenciesError(null);
         const response = await client.entities.agency_profiles.queryAll({
           query: {},
           sort: '-created_at',
@@ -291,6 +300,8 @@ export default function RiderDashboard() {
         }
       } catch (err) {
         console.error('지사 목록 불러오기 실패:', err);
+        // 심각-7: 사용자에게 에러 안내
+        setAgenciesError('지사 목록을 불러오지 못했습니다. 새로고침해 주세요.');
       } finally {
         setAgenciesLoading(false);
       }
@@ -343,11 +354,11 @@ export default function RiderDashboard() {
   });
 
   useEffect(() => {
+    // 주의-3: cleanup이 항상 타이머를 정리하도록 조건 외부에서 return
     const dismissed = sessionStorage.getItem("rider-match-modal-dismissed");
-    if (latestMatch && !dismissed) {
-      const timer = setTimeout(() => setShowMatchModal(true), 800);
-      return () => clearTimeout(timer);
-    }
+    if (!latestMatch || dismissed) return;
+    const timer = setTimeout(() => setShowMatchModal(true), 800);
+    return () => clearTimeout(timer);
   }, [latestMatch]);
   // #19 — AI 매칭 추천 코로 상태
   const [aiResult, setAiResult] = useState<string | null>(null);
@@ -357,6 +368,7 @@ export default function RiderDashboard() {
   // #19 — AI 매칭 추천 호출 (Option B: SDK client.ai.gentxt 사용)
   const handleAIRecommend = async () => {
     if (!selectedCity || !selectedDistrict) return;
+    if (aiLoading) return;  // 주의-5: 진행 중 중복 클릭 차단
     setAiLoading(true);
     setAiResult(null);
     setAiError(null);
@@ -530,6 +542,13 @@ export default function RiderDashboard() {
                       <span className="text-[#6B7280] text-sm ml-2">({filteredAgencies.length}개)</span>
                     </div>
                   </div>
+
+                  {/* 심각-7: 지사 목록 API 실패 안내 */}
+                  {agenciesError && (
+                    <div className="mb-4 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3 text-sm text-rose-400 text-center">
+                      {agenciesError}
+                    </div>
+                  )}
 
                   {/* #19 — AI 매칭 추천 위젯 */}
                   <div className="mb-6 bg-gradient-to-r from-[#1A1A1A] to-[#111111] border border-purple-500/20 rounded-2xl p-5">
