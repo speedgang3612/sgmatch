@@ -137,18 +137,12 @@ class DatabaseManager:
                 engine_kwargs["connect_args"] = {"check_same_thread": False}
                 logger.info("SQLite connect_args: check_same_thread=False")
             elif "asyncpg" in database_url or "postgresql" in database_url:
-                # PostgreSQL 전용: SSL require 항상 강제 적용
+                # PostgreSQL 전용: asyncpg 클라이언트 사이드 prepared statement 캐시 비활성화
                 connect_args: dict = {
-                    "ssl": "require",
                     "prepared_statement_cache_size": 0,
-                    "server_settings": {"statement_cache_size": "0"},
                 }
                 engine_kwargs["connect_args"] = connect_args
-                logger.info(
-                    "PostgreSQL connect_args: ssl=require, "
-                    "prepared_statement_cache_size=0, "
-                    "server_settings.statement_cache_size=0 (Supavisor)"
-                )
+                logger.info("PostgreSQL connect_args: prepared_statement_cache_size=0")
 
             # 캐시 무효화용 더미 주석 - 2026-04-10
             logger.info("DB init v2 - raw_userids 완전 제거 버전")
