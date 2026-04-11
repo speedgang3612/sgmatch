@@ -31,7 +31,7 @@ import {
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { cities } from "@/data/regions";
-import { client } from "@/lib/api";
+import { getAPIBaseURL } from "@/lib/config";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSEO } from "@/hooks/useSEO";
 
@@ -279,8 +279,14 @@ export default function Register() {
     setSaveError(null);
 
     try {
-      await client.entities.rider_profiles.create({
-        data: {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`${getAPIBaseURL()}/api/v1/entities/rider_profiles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
           name: riderName,
           phone: riderPhone,
           city: riderCity,
@@ -291,8 +297,9 @@ export default function Register() {
           birth_year: riderBirthYear,
           status: "active",
           created_at: new Date().toISOString().replace("T", " ").slice(0, 19),
-        },
+        }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setStep("done");
     } catch (err) {
       console.error("Failed to save rider profile:", err);
@@ -320,17 +327,25 @@ export default function Register() {
     setSaveError(null);
 
     try {
-      const response = await client.entities.companies.create({
-        data: {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`${getAPIBaseURL()}/api/v1/entities/companies`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
           company_name: companyName,
           business_number: businessNumber,
           representative: representative,
           phone: companyPhone,
           email: companyEmail,
           created_at: new Date().toISOString().replace("T", " ").slice(0, 19),
-        },
+        }),
       });
-      const newCompanyId = response?.data?.id;
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const responseData = await res.json();
+      const newCompanyId = responseData?.id;
       if (newCompanyId) {
         setSavedCompanyId(newCompanyId);
         setStep("branch-form");
@@ -363,8 +378,14 @@ export default function Register() {
     setSaveError(null);
 
     try {
-      await client.entities.agency_profiles.create({
-        data: {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`${getAPIBaseURL()}/api/v1/entities/agency_profiles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
           company_id: savedCompanyId,
           name: branchName,
           manager_name: branchManager,
@@ -379,8 +400,9 @@ export default function Register() {
           work_type: branchWorkType,
           verified: false,
           created_at: new Date().toISOString().replace("T", " ").slice(0, 19),
-        },
+        }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setStep("done");
     } catch (err) {
       console.error("Failed to save branch:", err);
