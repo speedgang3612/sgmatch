@@ -31,6 +31,7 @@ class Job_listingsData(BaseModel):
     title: str = None
     conditions: str = None
     promotion: str = None
+    platform: str = None          # 플랫폼 (쿠팡이츠플러스, 배민플러스 등)
     motorcycle: str = None
     settlement: str = None
     work_time: str = None
@@ -50,6 +51,7 @@ class Job_listingsUpdateData(BaseModel):
     title: Optional[str] = None
     conditions: Optional[str] = None
     promotion: Optional[str] = None
+    platform: Optional[str] = None        # 플랫폼
     motorcycle: Optional[str] = None
     settlement: Optional[str] = None
     work_time: Optional[str] = None
@@ -71,6 +73,7 @@ class Job_listingsResponse(BaseModel):
     title: Optional[str] = None
     conditions: Optional[str] = None
     promotion: Optional[str] = None
+    platform: Optional[str] = None        # 플랫폼
     motorcycle: Optional[str] = None
     settlement: Optional[str] = None
     work_time: Optional[str] = None

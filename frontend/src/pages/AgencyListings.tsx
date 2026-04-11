@@ -32,9 +32,16 @@ import {
   ArrowLeft,
   Gift,
 } from "lucide-react";
-import { client } from "@/lib/api";
+import axios from "axios";
+import { getAPIBaseURL } from "@/lib/config";
 import { useSEO } from "@/hooks/useSEO";
 import { cities } from "@/data/regions";
+
+/** localStorage에서 JWT 토큰을 읽어 Authorization 헤더 반환 */
+function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem("access_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 interface JobListing {
   id: number;
@@ -101,22 +108,25 @@ function NewListingModal({ isOpen, onClose, onSuccess }: NewListingModalProps) {
     setSaving(true);
     setError(null);
     try {
-      await client.entities.job_listings.create({
-        data: {
+      // SDK 대신 axios 직접 호출 → Authorization 헤더로 JWT 전송
+      await axios.post(
+        `${getAPIBaseURL()}/api/v1/entities/job_listings`,
+        {
           agency_name: agencyName,
           title,
           region: `${city} ${district}`,
           sub_region: district,
           conditions: "[]",
           promotion,
-          platform,     // 플랫폼 정보
+          platform,
           motorcycle,
           settlement,
           work_time: workTime,
           status,
           created_at: new Date().toISOString().replace("T", " ").slice(0, 19),
         },
-      });
+        { headers: getAuthHeaders() }
+      );
       reset();
       onSuccess();
       onClose();
@@ -354,11 +364,12 @@ export default function AgencyListings() {
   const fetchListings = async () => {
     setLoading(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const res = await (client.entities.job_listings as any).queryAll({
-        query: {}, sort: "-created_at", limit: 100, skip: 0,
-      });
-      const items = res?.data?.items ?? [];
+      // SDK 대신 axios 직접 호출 (공개 엔드포인트 - 인증 불필요)
+      const res = await axios.get(
+        `${getAPIBaseURL()}/api/v1/entities/job_listings/all`,
+        { params: { sort: "-created_at", limit: 100, skip: 0 } }
+      );
+      const items: JobListing[] = res?.data?.items ?? [];
       setListings(items);
     } catch (err) {
       console.error("공고 목록 불러오기 실패:", err);
@@ -373,8 +384,11 @@ export default function AgencyListings() {
     if (!confirm(`"${title}" 공고를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
     setDeletingId(id);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (client.entities.job_listings as any).delete({ id });
+      // SDK 대신 axios 직접 호출 → Authorization 헤더로 JWT 전송
+      await axios.delete(
+        `${getAPIBaseURL()}/api/v1/entities/job_listings/${id}`,
+        { headers: getAuthHeaders() }
+      );
       setListings((prev) => prev.filter((l) => l.id !== id));
     } catch (err) {
       console.error("공고 삭제 실패:", err);

@@ -17,6 +17,7 @@ class Job_listings(Base):
     title = Column(String, nullable=True)
     conditions = Column(String, nullable=True)
     promotion = Column(String, nullable=True)
+    platform = Column(String, nullable=True)   # 플랫폼 (쿠팡이츠플러스, 배민플러스 등)
     motorcycle = Column(String, nullable=True)
     settlement = Column(String, nullable=True)
     work_time = Column(String, nullable=True)
