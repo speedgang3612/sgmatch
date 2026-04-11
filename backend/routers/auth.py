@@ -148,7 +148,7 @@ async def callback(
         }
         # Google OAuth는 PKCE code_verifier 불필요 → 제거
 
-        token_url = f"{settings.oidc_issuer_url}/token"
+        token_url = "https://oauth2.googleapis.com/token"
         try:
             # 치명-5: OIDC 토큰 교환 timeout 10초 명시
             async with httpx.AsyncClient(timeout=10.0) as client:

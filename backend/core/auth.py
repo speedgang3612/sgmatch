@@ -36,7 +36,7 @@ def generate_code_challenge(code_verifier: str) -> str:
 
 async def get_jwks() -> Dict[str, Any]:
     """Get JWKS (JSON Web Key Set) from OIDC provider."""
-    jwks_url = f"{settings.oidc_issuer_url}/.well-known/jwks.json"
+    jwks_url = "https://www.googleapis.com/oauth2/v3/certs"
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             logger.info(f"Fetching JWKS from: {jwks_url}")
@@ -247,8 +247,7 @@ def build_authorization_url(
 
     # Google OAuth PKCE 불필요 - 제거됨
 
-    auth_url = f"{settings.oidc_issuer_url}/authorize?" + urllib.parse.urlencode(params)
-    return auth_url
+    return "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
 
 
 def build_logout_url(id_token: Optional[str] = None) -> str:
