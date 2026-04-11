@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, RefreshCw } from 'lucide-react';
+import { authApi } from '../lib/auth';
 
 export default function AuthErrorPage() {
   const [searchParams] = useSearchParams();
@@ -41,7 +42,7 @@ export default function AuthErrorPage() {
   };
 
   const handleRetryLogin = () => {
-    window.location.href = '/api/v1/auth/login';
+    authApi.login();
   };
 
   return (
