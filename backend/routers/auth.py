@@ -111,9 +111,10 @@ async def callback(
     backend_url = get_dynamic_backend_url(request)
 
     def redirect_with_error(message: str) -> RedirectResponse:
+        # /auth/error는 프론트엔드 라우트 → frontend_url로 리다이렉트
         fragment = urlencode({"msg": message})
         return RedirectResponse(
-            url=f"{backend_url}/auth/error?{fragment}",
+            url=f"{settings.frontend_url}/auth/error?{fragment}",
             status_code=status.HTTP_302_FOUND,
         )
 
@@ -206,7 +207,8 @@ async def callback(
             }
         )
 
-        redirect_url = f"{backend_url}/auth/callback?{fragment}"
+        # /auth/callback은 프론트엔드 라우트 → frontend_url로 리다이렉트
+        redirect_url = f"{settings.frontend_url}/auth/callback?{fragment}"
         logger.info("[callback] OIDC callback successful, redirecting to %s", redirect_url)
         redirect_response = RedirectResponse(
             url=redirect_url,
