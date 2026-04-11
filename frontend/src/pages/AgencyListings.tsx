@@ -123,7 +123,7 @@ function NewListingModal({ isOpen, onClose, onSuccess }: NewListingModalProps) {
           settlement,
           work_time: workTime,
           status,
-          created_at: new Date().toISOString().replace("T", " ").slice(0, 19),
+          // created_at은 백엔드 service에서 자동 설정 (타입 불일치 방지)
         },
         { headers: getAuthHeaders() }
       );

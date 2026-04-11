@@ -21,6 +21,12 @@ class Job_listingsService:
         try:
             if user_id:
                 data['user_id'] = user_id
+            # created_at 자동 설정 (프론트에서 미전달 시)
+            if not data.get('created_at'):
+                from datetime import datetime
+                data['created_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # None 값 필터링 — 존재하지 않는 컬럼에 None 전달 시 asyncpg 오류 방지
+            data = {k: v for k, v in data.items() if v is not None}
             obj = Job_listings(**data)
             self.db.add(obj)
             await self.db.commit()
@@ -31,6 +37,7 @@ class Job_listingsService:
             await self.db.rollback()
             logger.error(f"Error creating job_listings: {str(e)}")
             raise
+
 
 
     async def batch_create(self, items, user_id=None):

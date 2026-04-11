@@ -37,7 +37,8 @@ class Job_listingsData(BaseModel):
     work_time: str = None
     pay_per_delivery: str = None
     status: str = None
-    created_at: Optional[datetime] = None  # 심각-9: str → datetime
+    # created_at을 str로 유지 (DB Column이 String타입이므로 datetime 객체 전달 시 asyncpg 오류 발생)
+    created_at: Optional[str] = None
 
 
 class Job_listingsUpdateData(BaseModel):
@@ -57,7 +58,8 @@ class Job_listingsUpdateData(BaseModel):
     work_time: Optional[str] = None
     pay_per_delivery: Optional[str] = None
     status: Optional[str] = None
-    created_at: Optional[datetime] = None  # 심각-9
+    # DB Column이 String타입이므로 str로 숴밋을 유지
+    created_at: Optional[str] = None
 
 
 class Job_listingsResponse(BaseModel):
