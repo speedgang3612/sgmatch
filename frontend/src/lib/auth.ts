@@ -34,18 +34,10 @@ class RPApi {
   }
 
   async login() {
-    try {
-      const response = await this.client.get(
-        `${this.getBaseURL()}/api/v1/auth/login`
-      );
-      // The backend will redirect to OIDC provider
-      // SSO will work via cookies automatically
-      window.location.href = response.data.redirect_url;
-    } catch (error) {
-      throw new Error(
-        error.response?.data?.detail || 'Failed to initiate login'
-      );
-    }
+    // 백엔드가 HTTP 302 RedirectResponse를 반환하므로
+    // axios 대신 window.location.href로 직접 이동
+    const currentPath = window.location.pathname;
+    window.location.href = `${this.getBaseURL()}/api/v1/auth/login?from_url=${encodeURIComponent(currentPath)}`;
   }
 
   async logout() {
