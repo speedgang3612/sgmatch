@@ -48,9 +48,13 @@ class RPApi {
     }
   }
 
-  async login() {
-    // 백엔드가 HTTP 302 RedirectResponse를 반환하므로
-    // axios 대신 window.location.href로 직접 이동
+  async login(pendingRole?: string) {
+    // 역할이 지정된 경우 localStorage에 저장하여 AuthCallback에서 처리
+    if (pendingRole) {
+      localStorage.setItem('pending_role', pendingRole);
+    } else {
+      localStorage.removeItem('pending_role');
+    }
     const currentPath = window.location.pathname;
     window.location.href = `${this.getBaseURL()}/api/v1/auth/login?from_url=${encodeURIComponent(currentPath)}`;
   }

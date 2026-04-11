@@ -27,16 +27,41 @@ export default function AuthCallback() {
     // 토큰이 있는 경우 저장 후 이동
     if (token) {
       try {
-        // 토큰 저장
+        // 1단계: 토큰 저장
         localStorage.setItem('access_token', token);
-        if (expiresAt) {
-          localStorage.setItem('token_expires_at', expiresAt);
-        }
-        if (tokenType) {
-          localStorage.setItem('token_type', tokenType);
+        if (expiresAt) localStorage.setItem('token_expires_at', expiresAt);
+        if (tokenType) localStorage.setItem('token_type', tokenType);
+
+        // 2단계: 대기 중인 역할이 있으면 백엔드에 역할 업데이트 요청
+        const pendingRole = localStorage.getItem('pending_role');
+        if (pendingRole) {
+          try {
+            const apiBase = import.meta.env.VITE_API_BASE_URL || 'https://sgmatch.onrender.com';
+            const res = await fetch(`${apiBase}/api/v1/auth/me/role`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              },
+              body: JSON.stringify({ role: pendingRole }),
+            });
+            if (res.ok) {
+              // 새 JWT로 교체
+              const data = await res.json();
+              if (data.token) {
+                localStorage.setItem('access_token', data.token);
+                if (data.expires_at) localStorage.setItem('token_expires_at', String(data.expires_at));
+              }
+            }
+          } catch (roleErr) {
+            console.error('[AuthCallback] 역할 업데이트 실패 (무시하고 계속):', roleErr);
+          } finally {
+            // 성공/실패 관계없이 pending_role 제거
+            localStorage.removeItem('pending_role');
+          }
         }
 
-        // from_url 파라미터가 있으면 해당 경로로, 없으면 홈으로
+        // 3단계: 원래 경로 또는 홈으로 이동
         const fromUrl = searchParams.get('from_url') || '/';
         navigate(fromUrl, { replace: true });
       } catch (err) {
@@ -45,6 +70,7 @@ export default function AuthCallback() {
       }
       return;
     }
+
 
     // 토큰이 없는 경우 에러 처리
     const errorMsg = searchParams.get('error') || searchParams.get('msg');

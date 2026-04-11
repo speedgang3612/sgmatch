@@ -244,7 +244,7 @@ export default function Register() {
     if (!isRiderValid) return;
 
     if (!user) {
-      login();
+      login(); // 라이더 등록 — 역할 미변경
       return;
     }
 
@@ -280,7 +280,7 @@ export default function Register() {
     if (!isCompanyValid) return;
 
     if (!user) {
-      login();
+      login('agency'); // 지사 등록 — OAuth 후 agency 역할 자동 부여
       return;
     }
 
@@ -318,7 +318,7 @@ export default function Register() {
     if (!isBranchValid) return;
 
     if (!user) {
-      login();
+      login('agency'); // 지사 지점 등록 — OAuth 후 agency 역할 자동 부여
       return;
     }
 

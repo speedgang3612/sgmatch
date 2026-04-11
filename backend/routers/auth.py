@@ -236,12 +236,63 @@ async def callback(
         )
 
 
+# ──────────────────────────────────────────────────────────────
+# 역할 자동 부여 엔드포인트
+# 지사/라이더 가입 시 프론트엔드가 OAuth 완료 후 호출
+# ──────────────────────────────────────────────────────────────
+from pydantic import BaseModel as _BaseModel
+
+class RoleUpdateRequest(_BaseModel):
+    role: str  # 허용값: "agency", "rider"
+
+@router.patch("/me/role")
+async def update_my_role(
+    body: RoleUpdateRequest,
+    current_user: UserResponse = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """로그인한 사용자의 역할을 업데이트한다.
+    agency 또는 rider만 허용 (admin 불가).
+    업데이트 후 새 JWT를 발급하여 반환한다.
+    """
+    allowed_roles = {"agency", "rider"}
+    if body.role not in allowed_roles:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"허용되지 않는 역할입니다. 가능한 값: {allowed_roles}",
+        )
+
+    # DB에서 유저 조회 및 역할 업데이트
+    result = await db.execute(select(User).where(User.id == current_user.id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="사용자를 찾을 수 없습니다.")
+
+    # 이미 동일한 역할이면 그대로 새 토큰만 발급
+    if user.role != body.role:
+        user.role = body.role
+        await db.commit()
+        await db.refresh(user)
+        logger.info("[update_my_role] role updated to '%s' for user: %s", body.role, current_user.id)
+
+    # 새 JWT 발급 (업데이트된 role 포함)
+    auth_service = AuthService(db)
+    app_token, expires_at, _ = await auth_service.issue_app_token(user=user)
+
+    return {
+        "token": app_token,
+        "expires_at": int(expires_at.timestamp()),
+        "token_type": "Bearer",
+    }
+
+
 @router.post("/token/exchange", response_model=TokenExchangeResponse)
 async def exchange_platform_token(
     payload: PlatformTokenExchangeRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """Exchange Platform token for app token, restricted to admin user."""
+
     logger.info("[token/exchange] Received platform token exchange request")
 
     verify_url = f"{settings.oidc_issuer_url}/platform/tokens/verify"

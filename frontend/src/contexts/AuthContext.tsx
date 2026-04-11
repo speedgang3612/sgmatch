@@ -21,7 +21,7 @@ interface AuthContextType {
   error: string | null;
   isAdmin: boolean;
   isAgency: boolean;    // 지사 역할 여부
-  login: () => Promise<void>;
+  login: (role?: string) => Promise<void>;
   logout: () => Promise<void>;
   refetch: () => Promise<void>;
 }
@@ -60,10 +60,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const login = async () => {
+  const login = async (role?: string) => {
     try {
       setError(null);
-      await authApi.login();
+      await authApi.login(role);
     } catch (err) {
       setError(err instanceof Error ? err.message : '로그인에 실패했습니다.');
     }
