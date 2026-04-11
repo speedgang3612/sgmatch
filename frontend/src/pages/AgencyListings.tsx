@@ -44,6 +44,7 @@ interface JobListing {
   title: string;
   conditions: string;
   promotion: string;
+  platform?: string;  // 플랫폼 정보 (선택적 - 기존 데이터 호환)
   motorcycle: string;
   settlement: string;
   work_time: string;
@@ -82,12 +83,13 @@ function NewListingModal({ isOpen, onClose, onSuccess }: NewListingModalProps) {
   const [settlement, setSettlement] = useState("");
   const [workTime, setWorkTime] = useState("");
   const [status, setStatus] = useState("모집중 ✅"); // 기본값: 이모지 포함
+  const [platform, setPlatform] = useState("");  // 플랫폼 선택 상태
 
   const cityData = cities.find((c) => c.name === city);
 
   const reset = () => {
     setAgencyName(""); setTitle(""); setCity(""); setDistrict("");
-    setPromotion(""); setMotorcycle(""); setSettlement(""); setWorkTime("");
+    setPromotion(""); setPlatform(""); setMotorcycle(""); setSettlement(""); setWorkTime("");
     setStatus("모집중 ✅"); setError(null);
   };
 
@@ -107,6 +109,7 @@ function NewListingModal({ isOpen, onClose, onSuccess }: NewListingModalProps) {
           sub_region: district,
           conditions: "[]",
           promotion,
+          platform,     // 플랫폼 정보
           motorcycle,
           settlement,
           work_time: workTime,
@@ -176,6 +179,23 @@ function NewListingModal({ isOpen, onClose, onSuccess }: NewListingModalProps) {
               onChange={(e) => setTitle(e.target.value)}
               className="bg-[#111111] border-[#2A2A2A] text-white rounded-xl"
             />
+          </div>
+
+          {/* 📱 플랫폼 선택 */}
+          <div>
+            <label className="text-[#9CA3AF] text-sm mb-1.5 flex items-center gap-1.5 block">
+              📱 플랫폼 <span className="text-[#E63946]">*</span>
+            </label>
+            <Select value={platform} onValueChange={setPlatform}>
+              <SelectTrigger className="bg-[#111111] border-[#2A2A2A] text-white rounded-xl">
+                <SelectValue placeholder="플랫폼 선택" />
+              </SelectTrigger>
+              <SelectContent className="!bg-[#1A1A1A] border-[#2A2A2A] text-white">
+                <SelectItem value="쿠팡이츠플러스" className={selectCls}>쿠팡이츠플러스</SelectItem>
+                <SelectItem value="배민플러스" className={selectCls}>배민플러스</SelectItem>
+                <SelectItem value="그외(요기요,부릉,일반대행 등)" className={selectCls}>그외(요기요,부릉,일반대행 등)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* 지역 */}
