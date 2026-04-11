@@ -23,15 +23,16 @@ class AuthService:
     ) -> User:
         """Get existing user or create new one (upsert — 레이스컨디션 안전).
 
-        role: 신규 유저에만 적용되는 초기 역할 (agency/rider/None).
-              기존 유저는 기존 role 유지.
+        role: 희망 역할 (agency/rider/None).
+              - 신규 유저: 해당 역할로 생성
+              - 기존 유저: role이 지정되었으면 업데이트 (admin → 다른 role 변경 불가)
         """
         start_time = time.time()
         logger.debug(f"[DB_OP] Starting get_or_create_user - platform_sub: {platform_sub}")
 
         # 보안: admin 역할은 이 경로로 부여 불가
         allowed_roles = {"agency", "rider"}
-        safe_role = role if role in allowed_roles else "user"
+        safe_role = role if role in allowed_roles else None
 
         now = datetime.now(timezone.utc)
         try:
@@ -39,13 +40,18 @@ class AuthService:
             user = result.scalar_one_or_none()
 
             if user:
-                # 기존 유저: 이메일/이름/로그인 시간만 업데이트, role은 변경하지 않음
                 user.email = email
                 user.name = name
                 user.last_login = now
+                # intended_role이 지정되었고, 현재 admin이 아닌 경우에만 role 업데이트
+                if safe_role and user.role != "admin":
+                    user.role = safe_role
             else:
-                # 신규 유저: intended_role 적용
-                user = User(id=platform_sub, email=email, name=name, role=safe_role, last_login=now)
+                # 신규 유저: intended_role 적용 (없으면 기본 "user")
+                user = User(
+                    id=platform_sub, email=email, name=name,
+                    role=safe_role or "user", last_login=now,
+                )
                 self.db.add(user)
 
             await self.db.commit()
