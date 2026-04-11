@@ -146,10 +146,7 @@ async def callback(
             "client_id": settings.oidc_client_id,
             "client_secret": settings.oidc_client_secret,
         }
-
-        # Add PKCE code verifier if available
-        if code_verifier:
-            token_data["code_verifier"] = code_verifier
+        # Google OAuth는 PKCE code_verifier 불필요 → 제거
 
         token_url = f"{settings.oidc_issuer_url}/token"
         try:

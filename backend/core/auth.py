@@ -192,7 +192,7 @@ async def validate_id_token(id_token: str) -> Optional[Dict[str, Any]]:
                 id_token,
                 pem_key,
                 algorithms=["RS256"],
-                issuer=settings.oidc_issuer_url,
+                issuer="https://accounts.google.com",
                 audience=settings.oidc_client_id,
             )
             # Log user hash instead of actual user ID to avoid exposing sensitive information
@@ -245,10 +245,7 @@ def build_authorization_url(
         "nonce": nonce,
     }
 
-    # Add PKCE parameters if provided
-    if code_challenge:
-        params["code_challenge"] = code_challenge
-        params["code_challenge_method"] = "S256"
+    # Google OAuth PKCE 불필요 - 제거됨
 
     auth_url = f"{settings.oidc_issuer_url}/authorize?" + urllib.parse.urlencode(params)
     return auth_url
