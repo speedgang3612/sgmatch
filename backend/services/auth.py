@@ -18,24 +18,34 @@ class AuthService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_or_create_user(self, platform_sub: str, email: str, name: Optional[str] = None) -> User:
-        """Get existing user or create new one (upsert — 레이스컨디션 안전)."""
+    async def get_or_create_user(
+        self, platform_sub: str, email: str, name: Optional[str] = None, role: Optional[str] = None
+    ) -> User:
+        """Get existing user or create new one (upsert — 레이스컨디션 안전).
+
+        role: 신규 유저에만 적용되는 초기 역할 (agency/rider/None).
+              기존 유저는 기존 role 유지.
+        """
         start_time = time.time()
         logger.debug(f"[DB_OP] Starting get_or_create_user - platform_sub: {platform_sub}")
 
-        # 심각-6: merge()는 PK 컬리전 SELECT 후 INSERT 또는 UPDATE를 단일 실행으로 처리
-        # 동시에 둘 이상의 콜백이 오면 PK 충돌 대신 merge가 안전하게 실행됨
+        # 보안: admin 역할은 이 경로로 부여 불가
+        allowed_roles = {"agency", "rider"}
+        safe_role = role if role in allowed_roles else "user"
+
         now = datetime.now(timezone.utc)
         try:
             result = await self.db.execute(select(User).where(User.id == platform_sub))
             user = result.scalar_one_or_none()
 
             if user:
+                # 기존 유저: 이메일/이름/로그인 시간만 업데이트, role은 변경하지 않음
                 user.email = email
                 user.name = name
                 user.last_login = now
             else:
-                user = User(id=platform_sub, email=email, name=name, last_login=now)
+                # 신규 유저: intended_role 적용
+                user = User(id=platform_sub, email=email, name=name, role=safe_role, last_login=now)
                 self.db.add(user)
 
             await self.db.commit()
@@ -43,9 +53,8 @@ class AuthService:
         except Exception as e:
             await self.db.rollback()
             logger.error(f"[DB_OP] get_or_create_user 실패, 재시도: {e}")
-            # 동시 생성 충돌 가능성: 충돌 후 이미 존재하는 유저를 조회
             result = await self.db.execute(select(User).where(User.id == platform_sub))
-            user = result.scalar_one()  # 없으면 예외 발생 (DB 장애)
+            user = result.scalar_one()
         logger.debug(f"[DB_OP] User commit/refresh completed in {time.time() - start_time:.4f}s")
         return user
 
@@ -75,14 +84,19 @@ class AuthService:
 
         return token, expires_at, claims
 
-    async def store_oidc_state(self, state: str, nonce: str, code_verifier: str):
+    async def store_oidc_state(
+        self, state: str, nonce: str, code_verifier: str, intended_role: Optional[str] = None
+    ):
         """Store OIDC state in database."""
         # Clean up expired states first
         await self.db.execute(delete(OIDCState).where(OIDCState.expires_at < datetime.now(timezone.utc)))
 
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)  # 10 minute expiry
 
-        oidc_state = OIDCState(state=state, nonce=nonce, code_verifier=code_verifier, expires_at=expires_at)
+        oidc_state = OIDCState(
+            state=state, nonce=nonce, code_verifier=code_verifier,
+            intended_role=intended_role, expires_at=expires_at,
+        )
 
         self.db.add(oidc_state)
         await self.db.commit()
@@ -100,7 +114,11 @@ class AuthService:
             return None
 
         # Extract data before deleting
-        state_data = {"nonce": oidc_state.nonce, "code_verifier": oidc_state.code_verifier}
+        state_data = {
+            "nonce": oidc_state.nonce,
+            "code_verifier": oidc_state.code_verifier,
+            "intended_role": oidc_state.intended_role,  # OAuth 시작 시 전달된 희망 역할
+        }
 
         # Delete the used state (one-time use)
         await self.db.delete(oidc_state)

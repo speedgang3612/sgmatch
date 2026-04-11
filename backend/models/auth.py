@@ -9,7 +9,7 @@ class User(Base):
     id = Column(String(255), primary_key=True, index=True)  # Use platform sub as primary key
     email = Column(String(255), nullable=False)
     name = Column(String(255), nullable=True)
-    role = Column(String(50), default="user", nullable=False)  # user/admin
+    role = Column(String(50), default="user", nullable=False)  # user/admin/agency/rider
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_login = Column(DateTime(timezone=True), nullable=True)
 
@@ -21,6 +21,8 @@ class OIDCState(Base):
     state = Column(String(255), unique=True, index=True, nullable=False)
     nonce = Column(String(255), nullable=False)
     code_verifier = Column(String(255), nullable=False)
+    # OAuth 시작 시 프론트엔드가 전달한 희망 역할 (agency/rider/None)
+    intended_role = Column(String(50), nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

@@ -48,8 +48,12 @@ async def initialize_database():
             await session.execute(text(
                 "ALTER TABLE job_listings ADD COLUMN IF NOT EXISTS platform VARCHAR"
             ))
+            # OAuth 플로우에서 희망 역할을 전달하기 위한 컬럼 추가
+            await session.execute(text(
+                "ALTER TABLE oidc_states ADD COLUMN IF NOT EXISTS intended_role VARCHAR(50)"
+            ))
             await session.commit()
-            logger.info("🔧 job_listings.platform 컬럼 확인/추가 완료")
+            logger.info("🔧 런타임 컬럼 마이그레이션 완료 (job_listings.platform, oidc_states.intended_role)")
         # ──────────────────────────────────────────────────────────
 
         logger.info("Database initialized successfully")

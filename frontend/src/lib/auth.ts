@@ -49,14 +49,14 @@ class RPApi {
   }
 
   async login(pendingRole?: string) {
-    // 역할이 지정된 경우 localStorage에 저장하여 AuthCallback에서 처리
-    if (pendingRole) {
-      localStorage.setItem('pending_role', pendingRole);
-    } else {
-      localStorage.removeItem('pending_role');
-    }
+    // intended_role을 백엔드 login URL에 직접 전달
+    // 백엔드가 OIDC state에 저장 → 콜백 시 유저 생성과 동시에 role 설정
     const currentPath = window.location.pathname;
-    window.location.href = `${this.getBaseURL()}/api/v1/auth/login?from_url=${encodeURIComponent(currentPath)}`;
+    let loginUrl = `${this.getBaseURL()}/api/v1/auth/login?from_url=${encodeURIComponent(currentPath)}`;
+    if (pendingRole) {
+      loginUrl += `&intended_role=${encodeURIComponent(pendingRole)}`;
+    }
+    window.location.href = loginUrl;
   }
 
   async logout() {

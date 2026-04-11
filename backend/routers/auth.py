@@ -75,16 +75,23 @@ def derive_name_from_email(email: str) -> str:
 
 
 @router.get("/login")
-async def login(request: Request, db: AsyncSession = Depends(get_db)):
+async def login(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    intended_role: Optional[str] = None,  # 프론트엔드에서 전달하는 희망 역할 (agency/rider)
+):
     """Start OIDC login flow with PKCE."""
     state = generate_state()
     nonce = generate_nonce()
     code_verifier = generate_code_verifier()
     code_challenge = generate_code_challenge(code_verifier)
 
-    # Store state, nonce, and code verifier in database
+    # 보안: admin 역할은 OAuth로 부여 불가
+    safe_role = intended_role if intended_role in {"agency", "rider"} else None
+
+    # Store state, nonce, code verifier, and intended_role in database
     auth_service = AuthService(db)
-    await auth_service.store_oidc_state(state, nonce, code_verifier)
+    await auth_service.store_oidc_state(state, nonce, code_verifier, intended_role=safe_role)
 
     # redirect_uri는 Google Cloud Console에 등록된 URI와 정확히 일치해야 함
     # BACKEND_URL 환경변수 우선 사용 (동적 헤더 기반이면 불일치 발생)
@@ -136,6 +143,7 @@ async def callback(
 
     nonce = temp_data["nonce"]
     code_verifier = temp_data.get("code_verifier")
+    intended_role = temp_data.get("intended_role")  # OAuth 시작 시 전달된 희망 역할
 
     try:
         # redirect_uri는 login()과 반드시 동일해야 Google 검증 통과
@@ -198,10 +206,12 @@ async def callback(
         if token_nonce and token_nonce != nonce:
             return redirect_with_error("Invalid nonce")
 
-        # Get or create user
+        # Get or create user (신규 유저에만 intended_role 적용)
         email = id_claims.get("email", "")
         name = id_claims.get("name") or derive_name_from_email(email)
-        user = await auth_service.get_or_create_user(platform_sub=id_claims["sub"], email=email, name=name)
+        user = await auth_service.get_or_create_user(
+            platform_sub=id_claims["sub"], email=email, name=name, role=intended_role,
+        )
 
         # Issue application JWT token encapsulating user information
         app_token, expires_at, _ = await auth_service.issue_app_token(user=user)
