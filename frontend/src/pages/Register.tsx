@@ -101,8 +101,7 @@ export default function Register() {
     const token = localStorage.getItem('access_token');
     if (!token) return;
     try {
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'https://sgmatch.onrender.com';
-      const res = await fetch(`${apiBase}/api/v1/auth/me/role`, {
+      const res = await fetch(`${getAPIBaseURL()}/api/v1/auth/me/role`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -116,7 +115,9 @@ export default function Register() {
           localStorage.setItem('access_token', data.token);
           if (data.expires_at) localStorage.setItem('token_expires_at', String(data.expires_at));
         }
-        await refetch(); // AuthContext 상태 갱신
+        await refetch(); // AuthContext → JWT 재파싱 → UI 즉시 반영
+      } else {
+        console.error('[Register] role 업데이트 HTTP 오류:', res.status, await res.text());
       }
     } catch (err) {
       console.error('[Register] role 업데이트 실패:', err);

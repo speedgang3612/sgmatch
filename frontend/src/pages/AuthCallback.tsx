@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getAPIBaseURL } from '@/lib/config';
 
 /**
  * AuthCallback 페이지
@@ -36,8 +37,7 @@ export default function AuthCallback() {
         const pendingRole = localStorage.getItem('pending_role');
         if (pendingRole) {
           try {
-            const apiBase = import.meta.env.VITE_API_BASE_URL || 'https://sgmatch.onrender.com';
-            const res = await fetch(`${apiBase}/api/v1/auth/me/role`, {
+            const res = await fetch(`${getAPIBaseURL()}/api/v1/auth/me/role`, {
               method: 'PATCH',
               headers: {
                 'Content-Type': 'application/json',
