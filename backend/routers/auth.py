@@ -186,10 +186,12 @@ async def callback(
 
         # Validate ID token
         id_token = tokens.get("id_token")
+        # at_hash 클레임 검증을 위해 access_token도 함께 추출
+        access_token_value = tokens.get("access_token")
         if not id_token:
             return redirect_with_error("No ID token received")
 
-        id_claims = await validate_id_token(id_token)
+        id_claims = await validate_id_token(id_token, access_token=access_token_value)
 
         # Google OAuth nonce 검증 (선택적)
         token_nonce = id_claims.get("nonce")

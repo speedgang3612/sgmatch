@@ -123,7 +123,10 @@ def decode_access_token(token: str) -> Dict[str, Any]:
         raise AccessTokenError("Invalid authentication token") from exc
 
 
-async def validate_id_token(id_token: str) -> Optional[Dict[str, Any]]:
+async def validate_id_token(
+    id_token: str,
+    access_token: Optional[str] = None,  # at_hash 클레임 검증 시 필요 (Google OAuth)
+) -> Optional[Dict[str, Any]]:
     """Validate ID token with proper JWT signature verification using JWKS."""
     try:
         # Get the header to find the key ID
@@ -194,6 +197,7 @@ async def validate_id_token(id_token: str) -> Optional[Dict[str, Any]]:
                 algorithms=["RS256"],
                 issuer="https://accounts.google.com",
                 audience=settings.oidc_client_id,
+                access_token=access_token,  # at_hash 클레임 검증 (없으면 None → 검증 생략)
             )
             # Log user hash instead of actual user ID to avoid exposing sensitive information
             user_id = payload.get("sub", "unknown")
