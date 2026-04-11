@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
-  const { user, loading, isAdmin, login, logout } = useAuth();
+  const { user, loading, isAdmin, isAgency, login, logout } = useAuth();
 
   const isDashboard =
     location.pathname.startsWith("/rider") ||
@@ -17,13 +17,23 @@ export default function Navbar() {
 
   if (isDashboard) return null;
 
-  const links = [
-    { label: "홈", href: "/" },
-    { label: "요금제", href: "/pricing" },
-    { label: "라이더 대시보드", href: "/rider" },
-    { label: "지사 대시보드", href: "/agency" },
-    { label: "정산프로그램", href: "/#settlement-program", isNew: true },
-  ];
+  // ── role 기반 네비게이션 링크 ──────────────────────────────────
+  // 지사로 로그인: 홈 / 요금제 / 채용공고등록 / 정산프로그램
+  // 기본(비로그인 · 라이더): 홈 / 요금제 / 라이더대시보드 / 지사대시보드 / 정산프로그램
+  const links = isAgency
+    ? [
+        { label: "홈", href: "/" },
+        { label: "요금제", href: "/pricing" },
+        { label: "채용공고 등록", href: "/agency/listings" },
+        { label: "정산프로그램", href: "/#settlement-program", isNew: true },
+      ]
+    : [
+        { label: "홈", href: "/" },
+        { label: "요금제", href: "/pricing" },
+        { label: "라이더 대시보드", href: "/rider" },
+        { label: "지사 대시보드", href: "/agency" },
+        { label: "정산프로그램", href: "/#settlement-program", isNew: true },
+      ];
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0A0A0A]/90 backdrop-blur-xl border-b border-[#2A2A2A]">

@@ -20,6 +20,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   isAdmin: boolean;
+  isAgency: boolean;    // 지사 역할 여부
   login: () => Promise<void>;
   logout: () => Promise<void>;
   refetch: () => Promise<void>;
@@ -83,12 +84,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const isAdmin = user?.role === 'admin';
+  const isAgency = user?.role === 'agency';  // 지사 역할
 
   const value: AuthContextType = {
     user,
     loading,
     error,
     isAdmin,
+    isAgency,
     login,
     logout,
     refetch: checkAuthStatus,
