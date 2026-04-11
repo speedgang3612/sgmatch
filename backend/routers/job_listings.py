@@ -158,10 +158,9 @@ async def query_job_listingss_all(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(20, ge=1, le=2000, description="Max number of records to return"),
     fields: str = Query(None, description="Comma-separated list of fields to return"),
-    _current_user: UserResponse = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Query job_listingss with filtering, sorting, and pagination without user limitation
+    # 공개 엔드포인트: 로그인 없이 전체 채용 공고 조회 가능
     logger.debug(f"Querying job_listingss: query={query}, sort={sort}, skip={skip}, limit={limit}, fields={fields}")
 
     service = Job_listingsService(db)
@@ -193,15 +192,15 @@ async def query_job_listingss_all(
 async def get_job_listings(
     id: int,
     fields: str = Query(None, description="Comma-separated list of fields to return"),
-    current_user: UserResponse = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get a single job_listings by ID (user can only see their own records)"""
+    """Get a single job_listings by ID - 공개 엔드포인트 (로그인 불필요)"""
     logger.debug(f"Fetching job_listings with id: {id}, fields={fields}")
     
     service = Job_listingsService(db)
     try:
-        result = await service.get_by_id(id, user_id=str(current_user.id))
+        # user_id 필터 없이 누구나 조회 가능
+        result = await service.get_by_id(id)
         if not result:
             logger.warning(f"Job_listings with id {id} not found")
             raise HTTPException(status_code=404, detail="Job_listings not found")
