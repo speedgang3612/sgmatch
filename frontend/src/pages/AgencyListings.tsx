@@ -7,7 +7,7 @@
  *   - 공고 삭제 (confirm 후 DELETE)
  */
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,6 +31,7 @@ import {
   Building2,
   ArrowLeft,
   Gift,
+  ShieldCheck,
 } from "lucide-react";
 import axios from "axios";
 import { getAPIBaseURL } from "@/lib/config";
@@ -360,6 +361,24 @@ export default function AgencyListings() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [showVerifyGate, setShowVerifyGate] = useState(false);
+  const navigate = useNavigate();
+
+  // 2단계 인증 완료 여부 확인
+  const isVerified = () => {
+    return (
+      localStorage.getItem('agency_step1_submitted') === 'true' &&
+      localStorage.getItem('agency_step2_submitted') === 'true'
+    );
+  };
+
+  const handleNewListing = () => {
+    if (!isVerified()) {
+      setShowVerifyGate(true);
+      return;
+    }
+    setShowModal(true);
+  };
 
   const fetchListings = async () => {
     setLoading(true);
@@ -424,7 +443,7 @@ export default function AgencyListings() {
             </div>
           </div>
           <Button
-            onClick={() => setShowModal(true)}
+            onClick={handleNewListing}
             className="bg-[#E63946] hover:bg-[#FF4D5A] text-white font-bold rounded-xl gap-2"
           >
             <Plus size={16} /> 공고 등록
@@ -447,7 +466,7 @@ export default function AgencyListings() {
               첫 번째 공고를 등록하고 라이더를 모집해 보세요.
             </p>
             <Button
-              onClick={() => setShowModal(true)}
+              onClick={handleNewListing}
               className="bg-[#E63946] hover:bg-[#FF4D5A] text-white font-bold rounded-xl px-8 py-5 gap-2"
             >
               <Plus size={16} /> 첫 번째 공고 등록
@@ -546,6 +565,41 @@ export default function AgencyListings() {
         onClose={() => setShowModal(false)}
         onSuccess={fetchListings}
       />
+
+      {/* 2단계 인증 미완료 안내 모달 */}
+      {showVerifyGate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-8 max-w-md w-full mx-4 text-center">
+            <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
+              <ShieldCheck size={32} className="text-amber-400" />
+            </div>
+            <h3 className="text-xl font-bold mb-2">인증이 필요합니다</h3>
+            <p className="text-[#9CA3AF] text-sm mb-6">
+              채용 공고를 등록하려면 <span className="text-amber-400 font-semibold">2단계 인증</span>을
+              먼저 완료해야 합니다.
+              <br />
+              <span className="text-[#6B7280] text-xs mt-2 block">
+                인증 관리 → 1단계(기본 서류) + 2단계(운영 실태) 완료
+              </span>
+            </p>
+            <div className="flex gap-3">
+              <Button
+                onClick={() => navigate('/agency/verification')}
+                className="flex-1 bg-[#E63946] hover:bg-[#FF4D5A] text-white font-bold rounded-xl py-5 gap-2"
+              >
+                <ShieldCheck size={16} /> 인증하러 가기
+              </Button>
+              <Button
+                onClick={() => setShowVerifyGate(false)}
+                variant="outline"
+                className="!bg-transparent border-[#2A2A2A] text-[#9CA3AF] hover:text-white rounded-xl px-6 py-5"
+              >
+                닫기
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

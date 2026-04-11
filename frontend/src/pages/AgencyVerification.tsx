@@ -74,9 +74,22 @@ export default function AgencyVerification() {
   const [selectedPlatform, setSelectedPlatform] = useState("");
   const [hasMotorcycleSupport, setHasMotorcycleSupport] = useState("");
 
-  // 인증 상태
-  const [step1Submitted, setStep1Submitted] = useState(false);
-  const [step2Submitted, setStep2Submitted] = useState(false);
+  // 인증 상태 — localStorage에 영구 저장하여 새로고침해도 유지
+  const [step1Submitted, setStep1Submitted] = useState(
+    () => localStorage.getItem('agency_step1_submitted') === 'true'
+  );
+  const [step2Submitted, setStep2Submitted] = useState(
+    () => localStorage.getItem('agency_step2_submitted') === 'true'
+  );
+
+  const submitStep1 = () => {
+    setStep1Submitted(true);
+    localStorage.setItem('agency_step1_submitted', 'true');
+  };
+  const submitStep2 = () => {
+    setStep2Submitted(true);
+    localStorage.setItem('agency_step2_submitted', 'true');
+  };
 
   const simulateUpload = (
     setter: React.Dispatch<React.SetStateAction<UploadedFile | null>>,
@@ -447,7 +460,7 @@ export default function AgencyVerification() {
                     <div className="flex gap-3 pt-2">
                       <Button
                         onClick={() => {
-                          setStep1Submitted(true);
+                          submitStep1();
                         }}
                         disabled={!bizLicense || !idCard || !bizAddress}
                         className="bg-[#E63946] hover:bg-[#FF4D5A] text-white font-bold rounded-xl px-8 py-6 text-base disabled:opacity-50"
@@ -683,7 +696,7 @@ export default function AgencyVerification() {
 
                     <div className="flex gap-3 pt-2">
                       <Button
-                        onClick={() => setStep2Submitted(true)}
+                        onClick={() => submitStep2()}
                         disabled={!platformContract || !insuranceDoc || !selectedPlatform}
                         className="bg-[#E63946] hover:bg-[#FF4D5A] text-white font-bold rounded-xl px-8 py-6 text-base disabled:opacity-50"
                       >
