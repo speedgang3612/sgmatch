@@ -93,6 +93,16 @@ export default function Navbar() {
                 <span className="text-sm text-[#9CA3AF] flex items-center gap-1.5">
                   <User size={14} />
                   {user.name || user.email}
+                  {/* role 값 배지 — JWT의 실제 role 확인용 */}
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                    user.role === 'admin'
+                      ? 'bg-amber-500/20 text-amber-400'
+                      : user.role === 'agency'
+                      ? 'bg-blue-500/20 text-blue-400'
+                      : 'bg-[#2A2A2A] text-[#9CA3AF]'
+                  }`}>
+                    {user.role || 'user'}
+                  </span>
                   {isAdmin && (
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">
                       Admin
@@ -187,6 +197,16 @@ export default function Navbar() {
               <p className="text-sm text-[#9CA3AF] flex items-center gap-1.5">
                 <User size={14} />
                 {user.name || user.email}
+                {/* role 값 배지 — JWT의 실제 role 확인용 */}
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                  user.role === 'admin'
+                    ? 'bg-amber-500/20 text-amber-400'
+                    : user.role === 'agency'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'bg-[#2A2A2A] text-[#9CA3AF]'
+                }`}>
+                  {user.role || 'user'}
+                </span>
                 {isAdmin && (
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">
                     Admin
