@@ -25,14 +25,14 @@ export default function Navbar() {
         { label: "홈", href: "/" },
         { label: "요금제", href: "/pricing" },
         { label: "채용공고 등록", href: "/agency/listings" },
-        { label: "정산프로그램", href: "/#settlement-program", isNew: true },
+        { label: "정산프로그램", href: "https://sgnext.co.kr", isNew: true, isExternal: true },
       ]
     : [
         { label: "홈", href: "/" },
         { label: "요금제", href: "/pricing" },
         { label: "라이더 대시보드", href: "/rider" },
         { label: "지사 대시보드", href: "/agency" },
-        { label: "정산프로그램", href: "/#settlement-program", isNew: true },
+        { label: "정산프로그램", href: "https://sgnext.co.kr", isNew: true, isExternal: true },
       ];
 
   return (
@@ -43,7 +43,32 @@ export default function Navbar() {
 
           <div className="hidden md:flex items-center gap-6">
             {links.map((l) => {
+              const isExtLink = 'isExternal' in l && l.isExternal;
               const isAnchorLink = l.href.includes("#");
+
+              // 외부 링크는 새 탭으로 열기
+              if (isExtLink) {
+                return (
+                  <a
+                    key={l.href}
+                    href={l.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium transition-colors relative inline-flex items-center gap-1.5 text-[#9CA3AF] hover:text-white"
+                  >
+                    {l.label}
+                    {'isNew' in l && l.isNew && (
+                      <span className="relative flex items-center">
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-[#E63946] opacity-75 animate-ping" />
+                        <span className="relative inline-flex items-center bg-[#E63946] text-white text-[8px] font-extrabold tracking-wider px-1 py-0.5 rounded-full leading-none">
+                          N
+                        </span>
+                      </span>
+                    )}
+                  </a>
+                );
+              }
+
               const LinkOrA = isAnchorLink ? "a" : Link;
               const linkProps = isAnchorLink
                 ? { href: l.href }
@@ -59,7 +84,7 @@ export default function Navbar() {
                   }`}
                 >
                   {l.label}
-                  {"isNew" in l && l.isNew && (
+                  {'isNew' in l && l.isNew && (
                     <span className="relative flex items-center">
                       <span className="absolute inline-flex h-full w-full rounded-full bg-[#E63946] opacity-75 animate-ping" />
                       <span className="relative inline-flex items-center bg-[#E63946] text-white text-[8px] font-extrabold tracking-wider px-1 py-0.5 rounded-full leading-none">

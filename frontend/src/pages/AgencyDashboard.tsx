@@ -413,7 +413,9 @@ export default function AgencyDashboard() {
           <div className="border-t border-[#2A2A2A] my-3" />
 
           <a
-            href="/#settlement-program"
+            href="https://sgnext.co.kr"
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors bg-gradient-to-r from-[#E63946]/10 to-amber-500/10 text-amber-400 hover:from-[#E63946]/20 hover:to-amber-500/20 hover:text-amber-300 border border-amber-500/20 group relative"
           >
             <Calculator size={18} />
