@@ -93,14 +93,6 @@ async def login(request: Request, db: AsyncSession = Depends(get_db)):
     redirect_uri = f"{fixed_backend_url}/api/v1/auth/callback"
     logger.info("[login] redirect_uri=%s (BACKEND_URL=%s)", redirect_uri, os.environ.get("BACKEND_URL", "NOT SET"))
 
-    # 🔍 OAuth 디버깅 로그 - redirect_uri mismatch 문제 추적용
-    logger.info(f"🔍 [OAuth Debug] redirect_uri: {redirect_uri}")
-    logger.info(f"🔍 [OAuth Debug] BACKEND_URL env: {os.environ.get('BACKEND_URL')}")
-    logger.info(f"🔍 [OAuth Debug] fixed_backend_url: {fixed_backend_url}")
-
-    # 🔍 ENV 디버깅 로그 - Render 환경변수 실제 적용 값 확인용 (확인 후 제거 예정)
-    logger.info(f"🔍 [ENV Debug] OIDC_CLIENT_ID: {settings.oidc_client_id}")
-    logger.info(f"🔍 [ENV Debug] OIDC_CLIENT_SECRET 길이: {len(settings.oidc_client_secret) if settings.oidc_client_secret else 0}")
 
     auth_url = build_authorization_url(state, nonce, code_challenge, redirect_uri=redirect_uri)
     return RedirectResponse(
