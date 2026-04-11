@@ -5,7 +5,7 @@ import React, {
   useEffect,
   ReactNode,
 } from 'react';
-import { client } from '../lib/api';
+import { authApi } from '../lib/auth';
 
 interface User {
   id: string;
@@ -49,9 +49,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      const result = await client.auth.me();
-      if (result?.data) {
-        setUser(result.data as User);
+      const result = await authApi.getCurrentUser();
+      if (result) {
+        setUser(result as User);
       } else {
         setUser(null);
       }
@@ -65,7 +65,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async () => {
     try {
       setError(null);
-      await client.auth.toLogin();
+      await authApi.login();
     } catch (err) {
       setError(err instanceof Error ? err.message : '로그인에 실패했습니다.');
     }
@@ -74,7 +74,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       setError(null);
-      await client.auth.logout();
+      await authApi.logout();
       setUser(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : '로그아웃에 실패했습니다.');
