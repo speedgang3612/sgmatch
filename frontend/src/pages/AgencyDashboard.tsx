@@ -34,7 +34,18 @@ import MatchModal from "@/components/MatchModal";
 import Logo from "@/components/Logo";
 import AddBranchModal from "@/components/AddBranchModal";
 import { client } from "@/lib/api";
+import { getAPIBaseURL } from "@/lib/config";
 import { useAuth } from "@/contexts/AuthContext";
+
+// 인증 헤더가 포함된 API 호출 헬퍼
+const authFetch = async (path: string) => {
+  const token = localStorage.getItem('access_token');
+  const res = await fetch(`${getAPIBaseURL()}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+};
 import {
   agencyNotifications,
   MatchRecord,
@@ -220,7 +231,7 @@ export default function AgencyDashboard() {
     }
   }, [latestMatch]);
 
-  // Fetch company and branches
+  // Fetch company and branches (fetch API 사용 — SDK는 Authorization 헤더 누락 문제)
   useEffect(() => {
     const fetchData = async () => {
       if (!user) {
@@ -229,24 +240,20 @@ export default function AgencyDashboard() {
       }
       try {
         setLoadingData(true);
-        // Fetch user's company
-        const companyRes = await client.entities.companies.query({
-          query: {},
-          sort: "-created_at",
-          limit: 1,
-        });
-        const companyItems = companyRes?.data?.items;
+        // 현재 유저의 회사 조회
+        const companyData = await authFetch(
+          `/api/v1/entities/companies?sort=-created_at&limit=1`
+        );
+        const companyItems = companyData?.items;
         if (companyItems && companyItems.length > 0) {
           const comp = companyItems[0] as Company;
           setCompany(comp);
 
-          // Fetch branches for this company
-          const branchRes = await client.entities.agency_profiles.query({
-            query: { company_id: comp.id },
-            sort: "-created_at",
-            limit: 50,
-          });
-          const branchItems = branchRes?.data?.items;
+          // 해당 회사의 지사 목록 조회
+          const branchData = await authFetch(
+            `/api/v1/entities/agency_profiles?query=${encodeURIComponent(JSON.stringify({ company_id: comp.id }))}&sort=-created_at&limit=50`
+          );
+          const branchItems = branchData?.items;
           if (branchItems) {
             setBranches(branchItems as Branch[]);
           }
@@ -285,12 +292,10 @@ export default function AgencyDashboard() {
   const refreshBranches = async () => {
     if (!company) return;
     try {
-      const branchRes = await client.entities.agency_profiles.query({
-        query: { company_id: company.id },
-        sort: "-created_at",
-        limit: 50,
-      });
-      const branchItems = branchRes?.data?.items;
+      const branchData = await authFetch(
+        `/api/v1/entities/agency_profiles?query=${encodeURIComponent(JSON.stringify({ company_id: company.id }))}&sort=-created_at&limit=50`
+      );
+      const branchItems = branchData?.items;
       if (branchItems) {
         setBranches(branchItems as Branch[]);
       }
