@@ -185,8 +185,9 @@ async def callback(
 
         id_claims = await validate_id_token(id_token)
 
-        # Validate nonce
-        if id_claims.get("nonce") != nonce:
+        # Google OAuth nonce 검증 (선택적)
+        token_nonce = id_claims.get("nonce")
+        if token_nonce and token_nonce != nonce:
             return redirect_with_error("Invalid nonce")
 
         # Get or create user
