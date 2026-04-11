@@ -52,9 +52,10 @@ interface JobListing {
 }
 
 const statusBadge: Record<string, string> = {
-  모집중: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  긴급: "bg-[#E63946]/20 text-[#E63946] border-[#E63946]/30",
-  마감: "bg-[#2A2A2A] text-[#6B7280] border-[#2A2A2A]",
+  // 모집 상태별 배지 스타일 (이모지 포함 키)
+  "모집중 ✅": "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+  "긴급 🔥": "bg-[#E63946]/20 text-[#E63946] border-[#E63946]/30",
+  "마감 ⛔": "bg-[#2A2A2A] text-[#6B7280] border-[#2A2A2A]",
 };
 
 const selectCls = "text-white hover:bg-white/10 focus:bg-white/10 focus:text-white";
@@ -80,14 +81,14 @@ function NewListingModal({ isOpen, onClose, onSuccess }: NewListingModalProps) {
   const [motorcycle, setMotorcycle] = useState("");
   const [settlement, setSettlement] = useState("");
   const [workTime, setWorkTime] = useState("");
-  const [status, setStatus] = useState("모집중");
+  const [status, setStatus] = useState("모집중 ✅"); // 기본값: 이모지 포함
 
   const cityData = cities.find((c) => c.name === city);
 
   const reset = () => {
     setAgencyName(""); setTitle(""); setCity(""); setDistrict("");
     setPromotion(""); setMotorcycle(""); setSettlement(""); setWorkTime("");
-    setStatus("모집중"); setError(null);
+    setStatus("모집중 ✅"); setError(null);
   };
 
   const handleSubmit = async () => {
@@ -235,9 +236,10 @@ function NewListingModal({ isOpen, onClose, onSuccess }: NewListingModalProps) {
                   <SelectValue placeholder="선택" />
                 </SelectTrigger>
                 <SelectContent className="!bg-[#1A1A1A] border-[#2A2A2A] text-white">
+                  {/* 오토바이 옵션 수정 */}
                   <SelectItem value="리스 가능" className={selectCls}>리스 가능</SelectItem>
-                  <SelectItem value="렌트 지원" className={selectCls}>렌트 지원</SelectItem>
-                  <SelectItem value="본인 보유" className={selectCls}>본인 보유</SelectItem>
+                  <SelectItem value="렌트 가능" className={selectCls}>렌트 가능</SelectItem>
+                  <SelectItem value="리스&렌트 둘다 가능" className={selectCls}>리스&amp;렌트 둘다 가능</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -250,9 +252,10 @@ function NewListingModal({ isOpen, onClose, onSuccess }: NewListingModalProps) {
                   <SelectValue placeholder="선택" />
                 </SelectTrigger>
                 <SelectContent className="!bg-[#1A1A1A] border-[#2A2A2A] text-white">
-                  <SelectItem value="익일 정산" className={selectCls}>익일 정산</SelectItem>
+                  {/* 정산 방식 옵션 수정 */}
                   <SelectItem value="주급" className={selectCls}>주급</SelectItem>
-                  <SelectItem value="격주" className={selectCls}>격주</SelectItem>
+                  <SelectItem value="익일지급" className={selectCls}>익일지급</SelectItem>
+                  <SelectItem value="주급&익일지급 둘다 가능" className={selectCls}>주급&amp;익일지급 둘다 가능</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -283,9 +286,10 @@ function NewListingModal({ isOpen, onClose, onSuccess }: NewListingModalProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="!bg-[#1A1A1A] border-[#2A2A2A] text-white">
-                  <SelectItem value="모집중" className={selectCls}>모집중</SelectItem>
-                  <SelectItem value="긴급" className={selectCls}>긴급</SelectItem>
-                  <SelectItem value="마감" className={selectCls}>마감</SelectItem>
+                  {/* 모집 상태 옵션 - 이모지 추가 */}
+                  <SelectItem value="모집중 ✅" className={selectCls}>모집중 ✅</SelectItem>
+                  <SelectItem value="긴급 🔥" className={selectCls}>긴급 🔥</SelectItem>
+                  <SelectItem value="마감 ⛔" className={selectCls}>마감 ⛔</SelectItem>
                 </SelectContent>
               </Select>
             </div>
