@@ -1,14 +1,41 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, LogIn, LogOut, User, Shield } from "lucide-react";
+import {
+  Menu, X, LogIn, LogOut, User, Shield, Building2, ChevronDown,
+  LayoutDashboard, Handshake, ClipboardList, ShieldCheck, Megaphone, BarChart3,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Logo from "./Logo";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const [agencyMenuOpen, setAgencyMenuOpen] = useState(false);
+  const agencyMenuRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const { user, loading, isAdmin, isAgency, login, logout } = useAuth();
+
+  // 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (agencyMenuRef.current && !agencyMenuRef.current.contains(e.target as Node)) {
+        setAgencyMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // 지사 관리 드롭다운 메뉴 항목
+  const agencyMenuItems = [
+    { icon: LayoutDashboard, label: "라이더 찾기", href: "/agency" },
+    { icon: Handshake, label: "매칭 현황", href: "/agency?view=match-status" },
+    { icon: Building2, label: "내 지사 관리", href: "/agency?view=branches" },
+    { icon: ClipboardList, label: "채용 공고", href: "/agency/listings" },
+    { icon: ShieldCheck, label: "인증 관리", href: "/agency/verification" },
+    { icon: Megaphone, label: "프로모션", href: "/agency/promotions" },
+    { icon: BarChart3, label: "분석", href: "/agency/analytics" },
+  ];
 
   const isDashboard =
     location.pathname.startsWith("/rider") ||
@@ -118,7 +145,7 @@ export default function Navbar() {
                 <span className="text-sm text-[#9CA3AF] flex items-center gap-1.5">
                   <User size={14} />
                   {user.name || user.email}
-                  {/* role 값 배지 — JWT의 실제 role 확인용 */}
+                  {/* role 값 배지 */}
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                     user.role === 'admin'
                       ? 'bg-amber-500/20 text-amber-400'
@@ -134,6 +161,41 @@ export default function Navbar() {
                     </span>
                   )}
                 </span>
+
+                {/* 지사 관리 드롭다운 — agency 역할일 때만 표시 */}
+                {isAgency && (
+                  <div className="relative" ref={agencyMenuRef}>
+                    <button
+                      onClick={() => setAgencyMenuOpen(!agencyMenuOpen)}
+                      className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border transition-all ${
+                        agencyMenuOpen
+                          ? 'bg-[#E63946]/10 border-[#E63946]/50 text-[#E63946]'
+                          : 'bg-[#1A1A1A] border-[#2A2A2A] text-[#9CA3AF] hover:text-white hover:border-[#E63946]/30'
+                      }`}
+                    >
+                      <Building2 size={14} />
+                      지사 관리
+                      <ChevronDown size={12} className={`transition-transform ${agencyMenuOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {agencyMenuOpen && (
+                      <div className="absolute right-0 top-full mt-2 w-48 bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl shadow-2xl shadow-black/50 py-2 z-50">
+                        {agencyMenuItems.map((item) => (
+                          <Link
+                            key={item.href}
+                            to={item.href}
+                            onClick={() => setAgencyMenuOpen(false)}
+                            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#9CA3AF] hover:text-white hover:bg-[#2A2A2A]/50 transition-colors"
+                          >
+                            <item.icon size={15} />
+                            {item.label}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <Button
                   onClick={logout}
                   variant="outline"
@@ -222,7 +284,6 @@ export default function Navbar() {
               <p className="text-sm text-[#9CA3AF] flex items-center gap-1.5">
                 <User size={14} />
                 {user.name || user.email}
-                {/* role 값 배지 — JWT의 실제 role 확인용 */}
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                   user.role === 'admin'
                     ? 'bg-amber-500/20 text-amber-400'
@@ -238,6 +299,25 @@ export default function Navbar() {
                   </span>
                 )}
               </p>
+
+              {/* 모바일 — 지사 관리 메뉴 */}
+              {isAgency && (
+                <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl p-2 space-y-0.5">
+                  <p className="text-[10px] text-[#6B7280] font-medium uppercase tracking-wider px-2 py-1">지사 관리</p>
+                  {agencyMenuItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2 px-2 py-2 text-sm text-[#9CA3AF] hover:text-white hover:bg-[#2A2A2A]/50 rounded-lg transition-colors"
+                    >
+                      <item.icon size={14} />
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+
               <Button
                 onClick={() => { logout(); setOpen(false); }}
                 variant="outline"
