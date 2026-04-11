@@ -86,10 +86,12 @@ async def login(request: Request, db: AsyncSession = Depends(get_db)):
     auth_service = AuthService(db)
     await auth_service.store_oidc_state(state, nonce, code_verifier)
 
-    # Build redirect_uri dynamically from request
-    backend_url = get_dynamic_backend_url(request)
-    redirect_uri = f"{backend_url}/api/v1/auth/callback"
-    logger.info("[login] Starting OIDC flow with redirect_uri=%s", redirect_uri)
+    # redirect_uri는 Google Cloud Console에 등록된 URI와 정확히 일치해야 함
+    # BACKEND_URL 환경변수 우선 사용 (동적 헤더 기반이면 불일치 발생)
+    # Render 대시보드 Environment 탭에서 BACKEND_URL=https://sgmatch.onrender.com 설정 필요
+    fixed_backend_url = os.environ.get("BACKEND_URL") or get_dynamic_backend_url(request)
+    redirect_uri = f"{fixed_backend_url}/api/v1/auth/callback"
+    logger.info("[login] redirect_uri=%s (BACKEND_URL=%s)", redirect_uri, os.environ.get("BACKEND_URL", "NOT SET"))
 
     auth_url = build_authorization_url(state, nonce, code_challenge, redirect_uri=redirect_uri)
     return RedirectResponse(
@@ -135,9 +137,11 @@ async def callback(
     code_verifier = temp_data.get("code_verifier")
 
     try:
-        # Build redirect_uri dynamically from request
-        redirect_uri = f"{backend_url}/api/v1/auth/callback"
-        logger.info("[callback] Exchanging code for tokens with redirect_uri=%s", redirect_uri)
+        # redirect_uri는 login()과 반드시 동일해야 Google 검증 통과
+        # BACKEND_URL 환경변수 우선 사용
+        fixed_backend_url = os.environ.get("BACKEND_URL") or backend_url
+        redirect_uri = f"{fixed_backend_url}/api/v1/auth/callback"
+        logger.info("[callback] redirect_uri=%s", redirect_uri)
 
         # Exchange authorization code for tokens with PKCE
         token_data = {
