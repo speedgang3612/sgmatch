@@ -94,7 +94,34 @@ function FieldError({ error }: { error: string | null }) {
 }
 
 export default function Register() {
-  const { user, login } = useAuth();
+  const { user, login, refetch } = useAuth();
+
+  // ── 이미 로그인된 유저의 역할을 agency로 업데이트하는 헬퍼 ──
+  const updateUserRole = async (role: string) => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+    try {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'https://sgmatch.onrender.com';
+      const res = await fetch(`${apiBase}/api/v1/auth/me/role`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ role }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.token) {
+          localStorage.setItem('access_token', data.token);
+          if (data.expires_at) localStorage.setItem('token_expires_at', String(data.expires_at));
+        }
+        await refetch(); // AuthContext 상태 갱신
+      }
+    } catch (err) {
+      console.error('[Register] role 업데이트 실패:', err);
+    }
+  };
   const [step, setStep] = useState<Step>("select");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -280,8 +307,13 @@ export default function Register() {
     if (!isCompanyValid) return;
 
     if (!user) {
-      login('agency'); // 지사 등록 — OAuth 후 agency 역할 자동 부여
+      login('agency'); // 비로그인 → OAuth 후 agency 역할 자동 부여
       return;
+    }
+
+    // 이미 로그인된 유저 → role이 agency가 아니면 즉시 업데이트
+    if (user.role !== 'agency') {
+      await updateUserRole('agency');
     }
 
     setSaving(true);
