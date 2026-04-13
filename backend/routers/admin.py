@@ -21,7 +21,9 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 # ---------- Pydantic Schemas ----------
 class RiderStatusUpdate(BaseModel):
-    status: Literal["pending", "active", "inactive", "rejected"]  # 주의-1/6: 유효 값 제약
+    # MVP 즉시 가입 시스템 — 관리자는 사후 차단/활성화만 가능
+    # active: 정상 이용 / inactive: 차단 / rejected: 영구 거절
+    status: Literal["active", "inactive", "rejected"]
 
 
 class AgencyStatusUpdate(BaseModel):
@@ -60,9 +62,12 @@ async def get_platform_stats(
     try:
         total_riders_sq = select(func.count(Rider_profiles.id)).scalar_subquery()
         total_agencies_sq = select(func.count(Agency_profiles.id)).scalar_subquery()
+        # MVP 즉시 가입: 신규 가입자는 active로 시작
+        # pending_riders = inactive 또는 status 미설정(null) 라이더 수
         pending_riders_sq = select(func.count(Rider_profiles.id)).where(
-            (Rider_profiles.status == "대기중") | (Rider_profiles.status.is_(None))
+            (Rider_profiles.status == "inactive") | (Rider_profiles.status.is_(None))
         ).scalar_subquery()
+        # pending_agencies = verified=False인 지사 수 (관리자가 차단한 경우)
         pending_agencies_sq = select(func.count(Agency_profiles.id)).where(
             (Agency_profiles.verified == False) | (Agency_profiles.verified.is_(None))
         ).scalar_subquery()

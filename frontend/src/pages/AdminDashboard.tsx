@@ -13,9 +13,7 @@ import {
   Settings,
   Menu,
   X,
-  UserCheck,
   CheckCircle,
-  Clock,
   XCircle,
   Bike,
   RefreshCw,
@@ -99,6 +97,11 @@ export default function AdminDashboard() {
   const [loadingRiders, setLoadingRiders] = useState(false);
   const [loadingAgencies, setLoadingAgencies] = useState(false);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+
+  // 필터 상태 — 라이더: all / active / inactive / rejected
+  const [riderFilter, setRiderFilter] = useState<"all" | "active" | "inactive" | "rejected">("all");
+  // 필터 상태 — 지사: all / active / blocked
+  const [agencyFilter, setAgencyFilter] = useState<"all" | "active" | "blocked">("all");
 
   // Fetch platform stats via admin API
   const fetchStats = useCallback(async () => {
@@ -224,10 +227,23 @@ export default function AdminDashboard() {
     refreshAll();
   }, [refreshAll]);
 
-  const pendingRiders = riders.filter(
-    (r) => !r.status || r.status === "대기중"
-  );
-  const pendingAgencies = agencies.filter((a) => !a.verified);
+  // 라이더 필터링
+  const activeRiders = riders.filter((r) => r.status === "active");
+  const inactiveRiders = riders.filter((r) => !r.status || r.status === "inactive");
+  const rejectedRiders = riders.filter((r) => r.status === "rejected");
+  const filteredRiders =
+    riderFilter === "active" ? activeRiders :
+    riderFilter === "inactive" ? inactiveRiders :
+    riderFilter === "rejected" ? rejectedRiders :
+    riders;
+
+  // 지사 필터링
+  const activeAgencies = agencies.filter((a) => a.verified === true);
+  const blockedAgencies = agencies.filter((a) => a.verified === false || a.verified === null);
+  const filteredAgencies =
+    agencyFilter === "active" ? activeAgencies :
+    agencyFilter === "blocked" ? blockedAgencies :
+    agencies;
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white flex">
@@ -314,14 +330,14 @@ export default function AdminDashboard() {
                 color: "text-blue-400",
               },
               {
-                label: "승인 대기 라이더",
+                label: "비활성 라이더",
                 value: loadingStats ? "..." : String(stats.pending_riders),
                 color: "text-amber-400",
               },
               {
-                label: "인증 대기 지사",
+                label: "차단된 지사",
                 value: loadingStats ? "..." : String(stats.pending_agencies),
-                color: "text-emerald-400",
+                color: "text-red-400",
               },
             ].map((card, i) => (
               <div
@@ -364,302 +380,198 @@ export default function AdminDashboard() {
           {/* ===== 대시보드 탭 ===== */}
           {activeTab === "dashboard" && (
             <div className="space-y-6">
-              {/* 승인 대기 라이더 */}
+              {/* 전체 사용자 요약 */}
               <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <Clock size={18} className="text-amber-400" />
-                  승인 대기 라이더 ({pendingRiders.length})
+                  <Users size={18} className="text-[#E63946]" />
+                  전체 사용자
                 </h3>
-                {loadingRiders ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 size={24} className="animate-spin text-[#6B7280]" />
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-emerald-400">{activeRiders.length}</p>
+                    <p className="text-[#6B7280] text-xs mt-1">활성 라이더</p>
                   </div>
-                ) : pendingRiders.length === 0 ? (
-                  <p className="text-[#6B7280] text-sm py-4">
-                    승인 대기 중인 라이더가 없습니다.
-                  </p>
-                ) : (
+                  <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-amber-400">{inactiveRiders.length}</p>
+                    <p className="text-[#6B7280] text-xs mt-1">비활성 라이더</p>
+                  </div>
+                  <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-red-400">{rejectedRiders.length}</p>
+                    <p className="text-[#6B7280] text-xs mt-1">거절된 라이더</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 지사 요약 */}
+              <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <Building2 size={18} className="text-blue-400" />
+                  전체 지사
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-emerald-400">{activeAgencies.length}</p>
+                    <p className="text-[#6B7280] text-xs mt-1">활성 지사</p>
+                  </div>
+                  <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-red-400">{blockedAgencies.length}</p>
+                    <p className="text-[#6B7280] text-xs mt-1">차단된 지사</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 최근 차단된 사용자 */}
+              {inactiveRiders.length > 0 && (
+                <div className="bg-[#1A1A1A] border border-red-500/20 rounded-2xl p-6">
+                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                    <XCircle size={18} className="text-red-400" />
+                    비활성 라이더 ({inactiveRiders.length})
+                  </h3>
                   <div className="space-y-3">
-                    {pendingRiders.slice(0, 5).map((r) => (
+                    {inactiveRiders.slice(0, 5).map((r) => (
                       <div
                         key={r.id}
                         className="flex items-center justify-between bg-[#111111] border border-[#2A2A2A] rounded-xl p-4"
                       >
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center">
-                            <Users size={18} className="text-amber-400" />
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 bg-red-500/10 rounded-lg flex items-center justify-center">
+                            <Users size={16} className="text-red-400" />
                           </div>
                           <div>
                             <p className="font-medium">{r.name}</p>
-                            <p className="text-[#6B7280] text-sm">
-                              {r.city} {r.district} ·{" "}
-                              {r.experience || "경력 미입력"} ·{" "}
-                              {r.has_motorcycle
-                                ? "오토바이 보유"
-                                : "오토바이 미보유"}
-                            </p>
+                            <p className="text-[#6B7280] text-xs">{r.phone} · {r.city} {r.district}</p>
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg"
-                            disabled={updatingId === r.id}
-                            onClick={() => updateRiderStatus(r.id, "승인")}
-                          >
-                            {updatingId === r.id ? (
-                              <Loader2
-                                size={12}
-                                className="animate-spin mr-1"
-                              />
-                            ) : (
-                              <CheckCircle size={12} className="mr-1" />
-                            )}
-                            승인
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg"
-                            disabled={updatingId === r.id}
-                            onClick={() => updateRiderStatus(r.id, "반려")}
-                          >
-                            <XCircle size={12} className="mr-1" />
-                            반려
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg"
+                          disabled={updatingId === r.id}
+                          onClick={() => updateRiderStatus(r.id, "active")}
+                        >
+                          {updatingId === r.id ? <Loader2 size={12} className="animate-spin mr-1" /> : <CheckCircle size={12} className="mr-1" />}
+                          활성화
+                        </Button>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-
-              {/* 인증 대기 지사 */}
-              <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6">
-                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <ShieldCheck size={18} className="text-amber-400" />
-                  인증 대기 지사 ({pendingAgencies.length})
-                </h3>
-                {loadingAgencies ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 size={24} className="animate-spin text-[#6B7280]" />
-                  </div>
-                ) : pendingAgencies.length === 0 ? (
-                  <p className="text-[#6B7280] text-sm py-4">
-                    인증 대기 중인 지사가 없습니다.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {pendingAgencies.slice(0, 5).map((a) => (
-                      <div
-                        key={a.id}
-                        className="flex items-center justify-between bg-[#111111] border border-[#2A2A2A] rounded-xl p-4"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
-                            <Building2 size={18} className="text-blue-400" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{a.name}</p>
-                            <p className="text-[#6B7280] text-sm">
-                              {a.city} {a.district} ·{" "}
-                              {a.platform || "플랫폼 미입력"} · 담당자:{" "}
-                              {a.manager_name || "-"}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg"
-                            disabled={updatingId === a.id}
-                            onClick={() => updateAgencyVerified(a.id, true)}
-                          >
-                            {updatingId === a.id ? (
-                              <Loader2
-                                size={12}
-                                className="animate-spin mr-1"
-                              />
-                            ) : (
-                              <CheckCircle size={12} className="mr-1" />
-                            )}
-                            인증
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg"
-                            disabled={updatingId === a.id}
-                            onClick={() => updateAgencyVerified(a.id, false)}
-                          >
-                            <XCircle size={12} className="mr-1" />
-                            반려
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* ===== 라이더 관리 탭 ===== */}
           {activeTab === "riders" && (
             <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold">
-                  라이더 관리 ({riders.length}명)
-                </h3>
-                {loadingRiders && (
-                  <Loader2
-                    size={18}
-                    className="animate-spin text-[#6B7280]"
-                  />
-                )}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold">전체 사용자 ({riders.length}명)</h3>
+                {loadingRiders && <Loader2 size={18} className="animate-spin text-[#6B7280]" />}
               </div>
+
+              {/* 필터 탭 */}
+              <div className="flex gap-2 mb-5 flex-wrap">
+                {([
+                  { key: "all", label: `전체 (${riders.length})` },
+                  { key: "active", label: `활성 (${activeRiders.length})` },
+                  { key: "inactive", label: `비활성 (${inactiveRiders.length})` },
+                  { key: "rejected", label: `거절됨 (${rejectedRiders.length})` },
+                ] as const).map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setRiderFilter(f.key)}
+                    className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                      riderFilter === f.key
+                        ? "bg-[#E63946] text-white"
+                        : "bg-[#111111] border border-[#2A2A2A] text-[#9CA3AF] hover:text-white"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
               {loadingRiders && riders.length === 0 ? (
                 <div className="flex justify-center py-10">
                   <Loader2 size={24} className="animate-spin text-[#6B7280]" />
                 </div>
-              ) : riders.length === 0 ? (
-                <p className="text-[#6B7280] text-center py-10">
-                  등록된 라이더가 없습니다.
-                </p>
+              ) : filteredRiders.length === 0 ? (
+                <p className="text-[#6B7280] text-center py-10">해당 사용자가 없습니다.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-[#2A2A2A]">
-                        <th className="text-left text-[#6B7280] font-medium pb-4">
-                          이름
-                        </th>
-                        <th className="text-left text-[#6B7280] font-medium pb-4 hidden sm:table-cell">
-                          지역
-                        </th>
-                        <th className="text-left text-[#6B7280] font-medium pb-4 hidden md:table-cell">
-                          경력
-                        </th>
-                        <th className="text-left text-[#6B7280] font-medium pb-4 hidden lg:table-cell">
-                          오토바이
-                        </th>
-                        <th className="text-left text-[#6B7280] font-medium pb-4 hidden lg:table-cell">
-                          근무 유형
-                        </th>
-                        <th className="text-left text-[#6B7280] font-medium pb-4">
-                          상태
-                        </th>
-                        <th className="text-right text-[#6B7280] font-medium pb-4">
-                          관리
-                        </th>
+                        <th className="text-left text-[#6B7280] font-medium pb-4">이름</th>
+                        <th className="text-left text-[#6B7280] font-medium pb-4 hidden sm:table-cell">지역</th>
+                        <th className="text-left text-[#6B7280] font-medium pb-4 hidden md:table-cell">경력</th>
+                        <th className="text-left text-[#6B7280] font-medium pb-4 hidden lg:table-cell">오토바이</th>
+                        <th className="text-left text-[#6B7280] font-medium pb-4 hidden lg:table-cell">근무 유형</th>
+                        <th className="text-left text-[#6B7280] font-medium pb-4">상태</th>
+                        <th className="text-right text-[#6B7280] font-medium pb-4">관리</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {riders.map((r) => {
-                        const status = r.status || "대기중";
-                        const isApproved = status === "승인";
-                        const isRejected = status === "반려";
-                        const isPending = !isApproved && !isRejected;
+                      {filteredRiders.map((r) => {
+                        const status = r.status || "inactive";
+                        const isActive = status === "active";
+                        const isRejected = status === "rejected";
+                        const isInactive = !isActive && !isRejected;
                         return (
-                          <tr
-                            key={r.id}
-                            className="border-b border-[#2A2A2A]/50 hover:bg-[#111111] transition-colors"
-                          >
+                          <tr key={r.id} className="border-b border-[#2A2A2A]/50 hover:bg-[#111111] transition-colors">
                             <td className="py-4">
                               <div>
                                 <span className="font-medium">{r.name}</span>
-                                <p className="text-[#6B7280] text-xs">
-                                  {r.phone}
-                                </p>
+                                <p className="text-[#6B7280] text-xs">{r.phone}</p>
                               </div>
                             </td>
-                            <td className="py-4 text-[#9CA3AF] hidden sm:table-cell">
-                              {r.city} {r.district}
-                            </td>
-                            <td className="py-4 text-[#9CA3AF] hidden md:table-cell">
-                              {r.experience || "-"}
-                            </td>
+                            <td className="py-4 text-[#9CA3AF] hidden sm:table-cell">{r.city} {r.district}</td>
+                            <td className="py-4 text-[#9CA3AF] hidden md:table-cell">{r.experience || "-"}</td>
                             <td className="py-4 hidden lg:table-cell">
-                              {r.has_motorcycle ? (
-                                <Bike
-                                  size={16}
-                                  className="text-emerald-400"
-                                />
-                              ) : (
-                                <span className="text-[#6B7280]">—</span>
-                              )}
+                              {r.has_motorcycle ? <Bike size={16} className="text-emerald-400" /> : <span className="text-[#6B7280]">—</span>}
                             </td>
-                            <td className="py-4 text-[#9CA3AF] hidden lg:table-cell">
-                              {r.rider_type || "-"}
-                            </td>
+                            <td className="py-4 text-[#9CA3AF] hidden lg:table-cell">{r.rider_type || "-"}</td>
                             <td className="py-4">
-                              <span
-                                className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                                  isApproved
-                                    ? "bg-emerald-500/20 text-emerald-400"
-                                    : isRejected
-                                    ? "bg-red-500/20 text-red-400"
-                                    : "bg-amber-500/20 text-amber-400"
-                                }`}
-                              >
-                                {status}
+                              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                                isActive ? "bg-emerald-500/20 text-emerald-400" :
+                                isRejected ? "bg-red-500/20 text-red-400" :
+                                "bg-[#2A2A2A] text-[#9CA3AF]"
+                              }`}>
+                                {isActive ? "활성" : isRejected ? "거절됨" : "비활성"}
                               </span>
                             </td>
                             <td className="py-4 text-right">
                               <div className="flex items-center justify-end gap-1">
-                                {isPending && (
-                                  <>
-                                    <Button
-                                      size="sm"
-                                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded-lg h-7 px-2"
-                                      disabled={updatingId === r.id}
-                                      onClick={() =>
-                                        updateRiderStatus(r.id, "승인")
-                                      }
-                                    >
-                                      {updatingId === r.id ? (
-                                        <Loader2
-                                          size={12}
-                                          className="animate-spin"
-                                        />
-                                      ) : (
-                                        <UserCheck size={12} />
-                                      )}
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      className="bg-red-600 hover:bg-red-500 text-white text-xs rounded-lg h-7 px-2"
-                                      disabled={updatingId === r.id}
-                                      onClick={() =>
-                                        updateRiderStatus(r.id, "반려")
-                                      }
-                                    >
-                                      <XCircle size={12} />
-                                    </Button>
-                                  </>
-                                )}
-                                {isApproved && (
+                                {isActive && (
                                   <Button
                                     size="sm"
-                                    variant="outline"
-                                    className="!bg-transparent border-[#2A2A2A] text-[#9CA3AF] hover:text-white text-xs rounded-lg h-7 px-2"
+                                    className="bg-red-600 hover:bg-red-500 text-white text-xs rounded-lg h-7 px-2.5 gap-1"
                                     disabled={updatingId === r.id}
-                                    onClick={() =>
-                                      updateRiderStatus(r.id, "대기중")
-                                    }
+                                    onClick={() => updateRiderStatus(r.id, "inactive")}
                                   >
-                                    <Clock size={12} />
+                                    {updatingId === r.id ? <Loader2 size={11} className="animate-spin" /> : <XCircle size={11} />}
+                                    차단하기
                                   </Button>
                                 )}
-                                {isRejected && (
+                                {(isInactive || isRejected) && (
+                                  <Button
+                                    size="sm"
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded-lg h-7 px-2.5 gap-1"
+                                    disabled={updatingId === r.id}
+                                    onClick={() => updateRiderStatus(r.id, "active")}
+                                  >
+                                    {updatingId === r.id ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />}
+                                    활성화
+                                  </Button>
+                                )}
+                                {isActive && (
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="!bg-transparent border-[#2A2A2A] text-[#9CA3AF] hover:text-white text-xs rounded-lg h-7 px-2"
+                                    className="!bg-transparent border-[#2A2A2A] text-[#9CA3AF] hover:text-red-400 hover:border-red-500/50 text-xs rounded-lg h-7 px-2"
                                     disabled={updatingId === r.id}
-                                    onClick={() =>
-                                      updateRiderStatus(r.id, "대기중")
-                                    }
+                                    onClick={() => updateRiderStatus(r.id, "rejected")}
+                                    title="영구 거절"
                                   >
-                                    <RefreshCw size={12} />
+                                    <XCircle size={12} />
                                   </Button>
                                 )}
                               </div>
@@ -677,127 +589,103 @@ export default function AdminDashboard() {
           {/* ===== 지사 관리 탭 ===== */}
           {activeTab === "agencies" && (
             <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold">
-                  지사 관리 ({agencies.length}개)
-                </h3>
-                {loadingAgencies && (
-                  <Loader2
-                    size={18}
-                    className="animate-spin text-[#6B7280]"
-                  />
-                )}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold">전체 지사 ({agencies.length}개)</h3>
+                {loadingAgencies && <Loader2 size={18} className="animate-spin text-[#6B7280]" />}
               </div>
+
+              {/* 필터 탭 */}
+              <div className="flex gap-2 mb-5 flex-wrap">
+                {([
+                  { key: "all", label: `전체 (${agencies.length})` },
+                  { key: "active", label: `활성 (${activeAgencies.length})` },
+                  { key: "blocked", label: `차단 (${blockedAgencies.length})` },
+                ] as const).map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setAgencyFilter(f.key)}
+                    className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                      agencyFilter === f.key
+                        ? "bg-[#E63946] text-white"
+                        : "bg-[#111111] border border-[#2A2A2A] text-[#9CA3AF] hover:text-white"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
               {loadingAgencies && agencies.length === 0 ? (
                 <div className="flex justify-center py-10">
                   <Loader2 size={24} className="animate-spin text-[#6B7280]" />
                 </div>
-              ) : agencies.length === 0 ? (
-                <p className="text-[#6B7280] text-center py-10">
-                  등록된 지사가 없습니다.
-                </p>
+              ) : filteredAgencies.length === 0 ? (
+                <p className="text-[#6B7280] text-center py-10">해당 지사가 없습니다.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-[#2A2A2A]">
-                        <th className="text-left text-[#6B7280] font-medium pb-4">
-                          지사명
-                        </th>
-                        <th className="text-left text-[#6B7280] font-medium pb-4 hidden sm:table-cell">
-                          지역
-                        </th>
-                        <th className="text-left text-[#6B7280] font-medium pb-4 hidden md:table-cell">
-                          플랫폼
-                        </th>
-                        <th className="text-left text-[#6B7280] font-medium pb-4 hidden lg:table-cell">
-                          담당자
-                        </th>
-                        <th className="text-left text-[#6B7280] font-medium pb-4">
-                          인증
-                        </th>
-                        <th className="text-right text-[#6B7280] font-medium pb-4">
-                          관리
-                        </th>
+                        <th className="text-left text-[#6B7280] font-medium pb-4">지사명</th>
+                        <th className="text-left text-[#6B7280] font-medium pb-4 hidden sm:table-cell">지역</th>
+                        <th className="text-left text-[#6B7280] font-medium pb-4 hidden md:table-cell">플랫폼</th>
+                        <th className="text-left text-[#6B7280] font-medium pb-4 hidden lg:table-cell">담당자</th>
+                        <th className="text-left text-[#6B7280] font-medium pb-4">상태</th>
+                        <th className="text-right text-[#6B7280] font-medium pb-4">관리</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {agencies.map((a) => (
-                        <tr
-                          key={a.id}
-                          className="border-b border-[#2A2A2A]/50 hover:bg-[#111111] transition-colors"
-                        >
+                      {filteredAgencies.map((a) => (
+                        <tr key={a.id} className="border-b border-[#2A2A2A]/50 hover:bg-[#111111] transition-colors">
                           <td className="py-4">
                             <div>
                               <span className="font-medium">{a.name}</span>
-                              <p className="text-[#6B7280] text-xs">
-                                {a.phone || "-"}
-                              </p>
+                              <p className="text-[#6B7280] text-xs">{a.phone || "-"}</p>
                             </div>
                           </td>
-                          <td className="py-4 text-[#9CA3AF] hidden sm:table-cell">
-                            {a.city} {a.district}
-                          </td>
-                          <td className="py-4 text-[#9CA3AF] hidden md:table-cell">
-                            {a.platform || "-"}
-                          </td>
-                          <td className="py-4 text-[#9CA3AF] hidden lg:table-cell">
-                            {a.manager_name || "-"}
-                          </td>
+                          <td className="py-4 text-[#9CA3AF] hidden sm:table-cell">{a.city} {a.district}</td>
+                          <td className="py-4 text-[#9CA3AF] hidden md:table-cell">{a.platform || "-"}</td>
+                          <td className="py-4 text-[#9CA3AF] hidden lg:table-cell">{a.manager_name || "-"}</td>
                           <td className="py-4">
-                            <span
-                              className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                                a.verified
-                                  ? "bg-emerald-500/20 text-emerald-400"
-                                  : "bg-amber-500/20 text-amber-400"
-                              }`}
-                            >
-                              {a.verified ? "인증됨" : "대기중"}
+                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                              a.verified ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
+                            }`}>
+                              {a.verified ? "활성" : "차단"}
                             </span>
                           </td>
                           <td className="py-4 text-right">
                             <div className="flex items-center justify-end gap-1">
-                              {!a.verified ? (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded-lg h-7 px-2"
-                                    disabled={updatingId === a.id}
-                                    onClick={() =>
-                                      updateAgencyVerified(a.id, true)
-                                    }
-                                  >
-                                    {updatingId === a.id ? (
-                                      <Loader2
-                                        size={12}
-                                        className="animate-spin"
-                                      />
-                                    ) : (
-                                      <ShieldCheck size={12} />
-                                    )}
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    className="bg-red-600 hover:bg-red-500 text-white text-xs rounded-lg h-7 px-2"
-                                    disabled={updatingId === a.id}
-                                    onClick={() =>
-                                      updateAgencyVerified(a.id, false)
-                                    }
-                                  >
-                                    <XCircle size={12} />
-                                  </Button>
-                                </>
+                              {a.verified ? (
+                                <Button
+                                  size="sm"
+                                  className="bg-red-600 hover:bg-red-500 text-white text-xs rounded-lg h-7 px-2.5 gap-1"
+                                  disabled={updatingId === a.id}
+                                  onClick={() => updateAgencyVerified(a.id, false)}
+                                >
+                                  {updatingId === a.id ? <Loader2 size={11} className="animate-spin" /> : <XCircle size={11} />}
+                                  차단하기
+                                </Button>
                               ) : (
                                 <Button
                                   size="sm"
-                                  variant="outline"
-                                  className="!bg-transparent border-[#2A2A2A] text-[#9CA3AF] hover:text-white text-xs rounded-lg h-7 px-2"
+                                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded-lg h-7 px-2.5 gap-1"
                                   disabled={updatingId === a.id}
-                                  onClick={() =>
-                                    updateAgencyVerified(a.id, false)
-                                  }
+                                  onClick={() => updateAgencyVerified(a.id, true)}
                                 >
-                                  <XCircle size={12} />
+                                  {updatingId === a.id ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />}
+                                  활성화
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
                                 </Button>
                               )}
                             </div>
@@ -856,158 +744,78 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* 인증 심사 대기 목록 */}
+              {/* 전체 지사 목록 */}
               <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6">
-                <h3 className="text-lg font-bold mb-6">
-                  인증 심사 대기 ({pendingAgencies.length})
-                </h3>
-                {loadingAgencies ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 size={24} className="animate-spin text-[#6B7280]" />
-                  </div>
-                ) : pendingAgencies.length === 0 ? (
-                  <p className="text-[#6B7280] text-sm py-4">
-                    인증 대기 중인 지사가 없습니다.
-                  </p>
+                <h3 className="text-lg font-bold mb-6">전체 지사 ({agencies.length})</h3>
+                {agencies.length === 0 ? (
+                  <p className="text-[#6B7280] text-sm py-4">등록된 지사가 없습니다.</p>
                 ) : (
                   <div className="space-y-4">
-                    {pendingAgencies.map((agency) => (
-                      <div
-                        key={agency.id}
-                        className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-5"
-                      >
+                    {agencies.map((agency) => (
+                      <div key={agency.id} className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-5">
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center">
-                              <Building2
-                                size={22}
-                                className="text-amber-400"
-                              />
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                              agency.verified ? "bg-emerald-500/10" : "bg-red-500/10"
+                            }`}>
+                              <Building2 size={22} className={agency.verified ? "text-emerald-400" : "text-red-400"} />
                             </div>
                             <div>
-                              <p className="font-bold text-base">
-                                {agency.name}
-                              </p>
-                              <p className="text-[#6B7280] text-sm">
-                                {agency.city} {agency.district} ·{" "}
-                                {agency.phone || "-"}
-                              </p>
+                              <p className="font-bold text-base">{agency.name}</p>
+                              <p className="text-[#6B7280] text-sm">{agency.city} {agency.district} · {agency.phone || "-"}</p>
                             </div>
                           </div>
-                          <span className="text-xs font-medium px-3 py-1.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                            인증 대기
+                          <span className={`text-xs font-medium px-3 py-1.5 rounded-full border ${
+                            agency.verified
+                              ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                              : "bg-red-500/20 text-red-400 border-red-500/30"
+                          }`}>
+                            {agency.verified ? "활성" : "차단"}
                           </span>
                         </div>
 
                         <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
                           <div className="bg-[#0A0A0A] rounded-lg p-3">
-                            <p className="text-[#6B7280] text-xs mb-1">
-                              플랫폼
-                            </p>
-                            <p className="text-sm font-medium">
-                              {agency.platform || "-"}
-                            </p>
+                            <p className="text-[#6B7280] text-xs mb-1">플랫폼</p>
+                            <p className="text-sm font-medium">{agency.platform || "-"}</p>
                           </div>
                           <div className="bg-[#0A0A0A] rounded-lg p-3">
-                            <p className="text-[#6B7280] text-xs mb-1">
-                              건당 단가
-                            </p>
-                            <p className="text-sm font-medium">
-                              {agency.pay_per_delivery || "-"}
-                            </p>
+                            <p className="text-[#6B7280] text-xs mb-1">건당 단가</p>
+                            <p className="text-sm font-medium">{agency.pay_per_delivery || "-"}</p>
                           </div>
                           <div className="bg-[#0A0A0A] rounded-lg p-3">
-                            <p className="text-[#6B7280] text-xs mb-1">
-                              정산 방식
-                            </p>
-                            <p className="text-sm font-medium">
-                              {agency.settlement_type || "-"}
-                            </p>
+                            <p className="text-[#6B7280] text-xs mb-1">정산 방식</p>
+                            <p className="text-sm font-medium">{agency.settlement_type || "-"}</p>
                           </div>
                           <div className="bg-[#0A0A0A] rounded-lg p-3">
-                            <p className="text-[#6B7280] text-xs mb-1">
-                              담당자
-                            </p>
-                            <p className="text-sm font-medium">
-                              {agency.manager_name || "-"}
-                            </p>
+                            <p className="text-[#6B7280] text-xs mb-1">담당자</p>
+                            <p className="text-sm font-medium">{agency.manager_name || "-"}</p>
                           </div>
                         </div>
 
                         <div className="flex gap-2">
-                          <Button
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl px-5"
-                            disabled={updatingId === agency.id}
-                            onClick={() =>
-                              updateAgencyVerified(agency.id, true)
-                            }
-                          >
-                            {updatingId === agency.id ? (
-                              <Loader2
-                                size={14}
-                                className="animate-spin mr-1.5"
-                              />
-                            ) : (
-                              <CheckCircle size={14} className="mr-1.5" />
-                            )}
-                            승인
-                          </Button>
-                          <Button
-                            className="bg-red-600 hover:bg-red-500 text-white text-sm font-bold rounded-xl px-5"
-                            disabled={updatingId === agency.id}
-                            onClick={() =>
-                              updateAgencyVerified(agency.id, false)
-                            }
-                          >
-                            <XCircle size={14} className="mr-1.5" />
-                            반려
-                          </Button>
+                          {agency.verified ? (
+                            <Button
+                              className="bg-red-600 hover:bg-red-500 text-white text-sm font-bold rounded-xl px-5 gap-1.5"
+                              disabled={updatingId === agency.id}
+                              onClick={() => updateAgencyVerified(agency.id, false)}
+                            >
+                              {updatingId === agency.id ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
+                              차단하기
+                            </Button>
+                          ) : (
+                            <Button
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl px-5 gap-1.5"
+                              disabled={updatingId === agency.id}
+                              onClick={() => updateAgencyVerified(agency.id, true)}
+                            >
+                              {updatingId === agency.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                              활성화
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
-                  </div>
-                )}
-              </div>
-
-              {/* 인증 완료 지사 */}
-              <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6">
-                <h3 className="text-lg font-bold mb-6">
-                  인증 완료 지사 (
-                  {agencies.filter((a) => a.verified).length})
-                </h3>
-                {agencies.filter((a) => a.verified).length === 0 ? (
-                  <p className="text-[#6B7280] text-sm py-4">
-                    인증 완료된 지사가 없습니다.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {agencies
-                      .filter((a) => a.verified)
-                      .map((a) => (
-                        <div
-                          key={a.id}
-                          className="flex items-center justify-between bg-[#111111] border border-[#2A2A2A] rounded-xl p-4"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center">
-                              <CheckCircle
-                                size={18}
-                                className="text-emerald-400"
-                              />
-                            </div>
-                            <div>
-                              <p className="font-medium">{a.name}</p>
-                              <p className="text-[#6B7280] text-sm">
-                                {a.city} {a.district} · {a.platform || "-"} ·{" "}
-                                {a.phone || "-"}
-                              </p>
-                            </div>
-                          </div>
-                          <span className="text-xs font-medium px-3 py-1.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                            인증됨
-                          </span>
-                        </div>
-                      ))}
                   </div>
                 )}
               </div>
