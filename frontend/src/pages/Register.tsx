@@ -132,6 +132,18 @@ export default function Register() {
   const [companyTouched, setCompanyTouched] = useState(false);
   const [branchTouched, setBranchTouched] = useState(false);
 
+  // 약관 동의 체크박스 --- 라이더 가입 폼
+  const [riderAgreePrivacy, setRiderAgreePrivacy] = useState(false);
+  const [riderAgreeThirdParty, setRiderAgreeThirdParty] = useState(false);
+  const [riderAgreeTerms, setRiderAgreeTerms] = useState(false);
+  const riderAllAgreed = riderAgreePrivacy && riderAgreeThirdParty && riderAgreeTerms;
+
+  // 약관 동의 체크박스 --- 회사/지사 가입 폼
+  const [companyAgreePrivacy, setCompanyAgreePrivacy] = useState(false);
+  const [companyAgreeThirdParty, setCompanyAgreeThirdParty] = useState(false);
+  const [companyAgreeTerms, setCompanyAgreeTerms] = useState(false);
+  const companyAllAgreed = companyAgreePrivacy && companyAgreeThirdParty && companyAgreeTerms;
+
   const jsonLd = useMemo(() => ({
     "@context": "https://schema.org",
     "@type": "WebPage",
@@ -270,6 +282,8 @@ export default function Register() {
   const handleRiderSubmit = async () => {
     setRiderTouched(true);
     if (!isRiderValid) return;
+    // 약관 전체 동의 여부 확인
+    if (!riderAllAgreed) return;
 
     if (!user) {
       login(); // 라이더 등록 — 역할 미변경
@@ -313,6 +327,8 @@ export default function Register() {
   const handleCompanySubmit = async () => {
     setCompanyTouched(true);
     if (!isCompanyValid) return;
+    // 약관 전체 동의 여부 확인
+    if (!companyAllAgreed) return;
 
     if (!user) {
       login('agency'); // 비로그인 → OAuth 후 agency 역할 자동 부여
@@ -718,10 +734,79 @@ export default function Register() {
                   </div>
                 </div>
 
+                {/* 약관 동의 체크박스 */}
+                <div className="mt-8 space-y-3">
+                  <p className="text-sm font-semibold text-[#9CA3AF] mb-3 flex items-center gap-1.5">
+                    <FileText size={14} />
+                    서비스 이용을 위해 아래 약관에 동의해주세요 <span className="text-[#E63946]">*</span>
+                  </p>
+
+                  {/* 개인정보 수집 및 이용 동의 */}
+                  <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    riderAgreePrivacy ? 'border-[#E63946]/40 bg-[#E63946]/5' : 'border-[#2A2A2A] hover:border-[#3A3A3A]'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={riderAgreePrivacy}
+                      onChange={(e) => setRiderAgreePrivacy(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 accent-[#E63946] shrink-0"
+                    />
+                    <span className="text-sm text-[#D1D5DB] leading-relaxed">
+                      <strong className="text-white">[필수]</strong> 개인정보 수집 및 이용 동의 —
+                      이름, 전화번호, 지역 등을 구인·구직 매칭 목적으로 수집합니다.{" "}
+                      <Link to="/privacy" target="_blank" className="text-[#E63946] hover:underline">
+                        전문 보기
+                      </Link>
+                    </span>
+                  </label>
+
+                  {/* 제3자 정보 제공 동의 */}
+                  <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    riderAgreeThirdParty ? 'border-[#E63946]/40 bg-[#E63946]/5' : 'border-[#2A2A2A] hover:border-[#3A3A3A]'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={riderAgreeThirdParty}
+                      onChange={(e) => setRiderAgreeThirdParty(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 accent-[#E63946] shrink-0"
+                    />
+                    <span className="text-sm text-[#D1D5DB] leading-relaxed">
+                      <strong className="text-white">[필수]</strong> 제3자 정보 제공 동의 —
+                      매칭 서비스 제공을 위해 지사에 라이더 정보(이름, 연락처 등)를 제공합니다.
+                    </span>
+                  </label>
+
+                  {/* 서비스 이용약관 동의 */}
+                  <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    riderAgreeTerms ? 'border-[#E63946]/40 bg-[#E63946]/5' : 'border-[#2A2A2A] hover:border-[#3A3A3A]'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={riderAgreeTerms}
+                      onChange={(e) => setRiderAgreeTerms(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 accent-[#E63946] shrink-0"
+                    />
+                    <span className="text-sm text-[#D1D5DB] leading-relaxed">
+                      <strong className="text-white">[필수]</strong> 서비스 이용약관 동의 —
+                      목적 외 사용, 정보 2차 판매, 스팸 사용 금지. 위반 시 계정 정지 및 법적 조치.{" "}
+                      <Link to="/terms" target="_blank" className="text-[#E63946] hover:underline">
+                        전문 보기
+                      </Link>
+                    </span>
+                  </label>
+
+                  {riderTouched && !riderAllAgreed && (
+                    <p className="flex items-center gap-1 text-red-400 text-xs animate-in fade-in slide-in-from-top-1 duration-200">
+                      <AlertCircle size={12} className="shrink-0" />
+                      모든 필수 약관에 동의해야 가입이 가능합니다.
+                    </p>
+                  )}
+                </div>
+
                 <Button
                   onClick={handleRiderSubmit}
                   disabled={saving}
-                  className="w-full mt-8 bg-[#E63946] hover:bg-[#FF4D5A] text-white font-bold rounded-xl py-6 text-base gap-2"
+                  className="w-full mt-4 bg-[#E63946] hover:bg-[#FF4D5A] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-xl py-6 text-base gap-2"
                 >
                   {saving ? (
                     <>
@@ -870,10 +955,79 @@ export default function Register() {
                   </div>
                 </div>
 
+                {/* 약관 동의 체크박스 */}
+                <div className="mt-8 space-y-3">
+                  <p className="text-sm font-semibold text-[#9CA3AF] mb-3 flex items-center gap-1.5">
+                    <FileText size={14} />
+                    서비스 이용을 위해 아래 약관에 동의해주세요 <span className="text-[#E63946]">*</span>
+                  </p>
+
+                  {/* 개인정보 수집 및 이용 동의 */}
+                  <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    companyAgreePrivacy ? 'border-[#E63946]/40 bg-[#E63946]/5' : 'border-[#2A2A2A] hover:border-[#3A3A3A]'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={companyAgreePrivacy}
+                      onChange={(e) => setCompanyAgreePrivacy(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 accent-[#E63946] shrink-0"
+                    />
+                    <span className="text-sm text-[#D1D5DB] leading-relaxed">
+                      <strong className="text-white">[필수]</strong> 개인정보 수집 및 이용 동의 —
+                      회사명, 사업자번호, 연락처 등을 구인·구직 매칭 목적으로 수집합니다.{" "}
+                      <Link to="/privacy" target="_blank" className="text-[#E63946] hover:underline">
+                        전문 보기
+                      </Link>
+                    </span>
+                  </label>
+
+                  {/* 제3자 정보 제공 동의 */}
+                  <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    companyAgreeThirdParty ? 'border-[#E63946]/40 bg-[#E63946]/5' : 'border-[#2A2A2A] hover:border-[#3A3A3A]'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={companyAgreeThirdParty}
+                      onChange={(e) => setCompanyAgreeThirdParty(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 accent-[#E63946] shrink-0"
+                    />
+                    <span className="text-sm text-[#D1D5DB] leading-relaxed">
+                      <strong className="text-white">[필수]</strong> 제3자 정보 제공 동의 —
+                      매칭 서비스 제공을 위해 라이더에게 지사 정보(지사명, 단가, 연락처 등)를 제공합니다.
+                    </span>
+                  </label>
+
+                  {/* 서비스 이용약관 동의 */}
+                  <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    companyAgreeTerms ? 'border-[#E63946]/40 bg-[#E63946]/5' : 'border-[#2A2A2A] hover:border-[#3A3A3A]'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={companyAgreeTerms}
+                      onChange={(e) => setCompanyAgreeTerms(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 accent-[#E63946] shrink-0"
+                    />
+                    <span className="text-sm text-[#D1D5DB] leading-relaxed">
+                      <strong className="text-white">[필수]</strong> 서비스 이용약관 동의 —
+                      목적 외 사용, 정보 2차 판매, 스팸 사용 금지. 위반 시 계정 정지 및 법적 조치.{" "}
+                      <Link to="/terms" target="_blank" className="text-[#E63946] hover:underline">
+                        전문 보기
+                      </Link>
+                    </span>
+                  </label>
+
+                  {companyTouched && !companyAllAgreed && (
+                    <p className="flex items-center gap-1 text-red-400 text-xs animate-in fade-in slide-in-from-top-1 duration-200">
+                      <AlertCircle size={12} className="shrink-0" />
+                      모든 필수 약관에 동의해야 가입이 가능합니다.
+                    </p>
+                  )}
+                </div>
+
                 <Button
                   onClick={handleCompanySubmit}
                   disabled={saving}
-                  className="w-full mt-8 bg-[#E63946] hover:bg-[#FF4D5A] text-white font-bold rounded-xl py-6 text-base gap-2"
+                  className="w-full mt-4 bg-[#E63946] hover:bg-[#FF4D5A] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-xl py-6 text-base gap-2"
                 >
                   {saving ? (
                     <>
