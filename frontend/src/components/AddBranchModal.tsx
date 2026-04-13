@@ -125,8 +125,8 @@ export default function AddBranchModal({
       if (isEditMode && existingBranch?.id) {
         // #17 — 수정 모드: update API 호출
         await client.entities.agency_profiles.update({
-          id: existingBranch.id,
-          ...payload,
+          id: String(existingBranch.id),
+          data: payload,
         });
       } else {
         // 신규 등록

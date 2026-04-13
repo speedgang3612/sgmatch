@@ -207,7 +207,7 @@ export default function Navbar() {
             ) : (
               <div className="flex items-center gap-2">
                 <Button
-                  onClick={login}
+                  onClick={() => login()}
                   variant="outline"
                   className="!bg-transparent border-[#2A2A2A] text-[#9CA3AF] hover:text-white hover:border-[#E63946] text-sm font-medium rounded-lg px-4 h-9 gap-1.5"
                 >

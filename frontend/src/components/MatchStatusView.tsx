@@ -95,9 +95,11 @@ export default function MatchStatusView({
     setUpdatingId(matchId);
     try {
       await client.entities.applications.update({
-        id: Number(matchId),
-        status: "matched",
-        updated_at: new Date().toISOString(),
+        id: matchId,
+        data: {
+          status: "matched",
+          updated_at: new Date().toISOString(),
+        },
       });
       onStatusChange?.();
     } catch (err) {
@@ -113,9 +115,11 @@ export default function MatchStatusView({
     setUpdatingId(matchId);
     try {
       await client.entities.applications.update({
-        id: Number(matchId),
-        status: "rejected",
-        updated_at: new Date().toISOString(),
+        id: matchId,
+        data: {
+          status: "rejected",
+          updated_at: new Date().toISOString(),
+        },
       });
       onStatusChange?.();
     } catch (err) {

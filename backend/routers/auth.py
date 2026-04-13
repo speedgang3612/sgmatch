@@ -27,6 +27,7 @@ from schemas.auth import (
     UserResponse,
 )
 from services.auth import AuthService
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])

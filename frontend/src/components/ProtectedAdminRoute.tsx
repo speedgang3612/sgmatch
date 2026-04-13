@@ -49,7 +49,7 @@ const ProtectedAdminRoute: React.FC<ProtectedAdminRouteProps> = ({
 
             <div className="space-y-3 pt-2">
               <Button
-                onClick={login}
+                onClick={() => login()}
                 className="w-full bg-[#E63946] hover:bg-[#FF4D5A] text-white font-bold rounded-xl py-3 gap-2"
               >
                 <LogIn className="h-4 w-4" />
@@ -106,7 +106,7 @@ const ProtectedAdminRoute: React.FC<ProtectedAdminRouteProps> = ({
 
             <div className="space-y-3 pt-2">
               <Button
-                onClick={login}
+                onClick={() => login()}
                 className="w-full bg-[#E63946] hover:bg-[#FF4D5A] text-white font-bold rounded-xl py-3 gap-2"
               >
                 <LogIn className="h-4 w-4" />
