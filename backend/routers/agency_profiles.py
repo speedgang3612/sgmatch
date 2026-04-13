@@ -20,7 +20,9 @@ router = APIRouter(prefix="/api/v1/entities/agency_profiles", tags=["agency_prof
 
 # ---------- Pydantic Schemas ----------
 class Agency_profilesData(BaseModel):
-    """Entity data schema (for create/update)"""
+    """지사 프로필 생성 스키마.
+    security: verified, created_at은 클라이언트에서 설정 불가 — 서버에서 강제 주입.
+    """
     name: str
     manager_name: str = None
     phone: str = None
@@ -32,12 +34,15 @@ class Agency_profilesData(BaseModel):
     settlement_type: str = None
     motorcycle_option: str = None
     work_type: str = None
-    verified: bool = None
-    created_at: str = None
+    logo_url: Optional[str] = None  # 지사 로고 이미지 URL (Cloudflare R2)
+    # verified, created_at 필드 없음 → 클라이언트 조작 원천 차단
 
 
 class Agency_profilesUpdateData(BaseModel):
-    """Update entity data (partial updates allowed)"""
+    """지사 프로필 수정 스키마 (부분 업데이트 허용).
+    security: verified(인증 상태)와 created_at은 일반 사용자 변경 불가.
+              verified 변경은 관리자 전용 (admin.py의 update_agency_status 경유).
+    """
     name: Optional[str] = None
     manager_name: Optional[str] = None
     phone: Optional[str] = None
@@ -49,13 +54,13 @@ class Agency_profilesUpdateData(BaseModel):
     settlement_type: Optional[str] = None
     motorcycle_option: Optional[str] = None
     work_type: Optional[str] = None
-    # verified 필드는 관리자 전용 (admin.py의 update_agency_status에서만 변경 가능)
-    created_at: Optional[str] = None
+    logo_url: Optional[str] = None  # 지사 로고 이미지 URL (Cloudflare R2)
+    # verified, created_at 필드 없음 → 일반 사용자 변경 불가
 
 
 
 class Agency_profilesResponse(BaseModel):
-    """Entity response schema"""
+    """지사 프로필 응답 스키마"""
     id: int
     user_id: str
     name: str
@@ -69,6 +74,7 @@ class Agency_profilesResponse(BaseModel):
     settlement_type: Optional[str] = None
     motorcycle_option: Optional[str] = None
     work_type: Optional[str] = None
+    logo_url: Optional[str] = None
     verified: Optional[bool] = None
     created_at: Optional[str] = None
 
@@ -214,16 +220,25 @@ async def create_agency_profiles(
     current_user: UserResponse = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new agency_profiles"""
+    """신규 지사 프로필 생성.
+    MVP: 가입 즉시 공고 등록 가능 — verified=True를 서버에서 강제 설정.
+    클라이언트가 verified를 임의로 설정하는 것을 원천 차단.
+    """
     logger.debug(f"Creating new agency_profiles with data: {data}")
-    
+
     service = Agency_profilesService(db)
     try:
-        result = await service.create(data.model_dump(), user_id=str(current_user.id))
+        payload = data.model_dump()
+        # MVP: 서버에서 인증 상태 강제 주입 — 클라이언트 조작 불가
+        payload["verified"] = True
+        # created_at은 DB server_default(func.now())로 자동 설정되므로 전달하지 않음
+        payload.pop("created_at", None)
+
+        result = await service.create(payload, user_id=str(current_user.id))
         if not result:
             raise HTTPException(status_code=400, detail="Failed to create agency_profiles")
-        
-        logger.info(f"Agency_profiles created successfully with id: {result.id}")
+
+        logger.info(f"Agency_profiles created with id={result.id}, verified=True (서버 강제)")
         return result
     except ValueError as e:
         logger.error(f"Validation error creating agency_profiles: {str(e)}")
@@ -294,18 +309,23 @@ async def update_agency_profiles(
     current_user: UserResponse = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update an existing agency_profiles (requires ownership)"""
+    """지사 프로필 수정 (본인 소유 레코드만 가능).
+    security: verified, created_at은 이 엔드포인트로 변경 불가.
+    """
     logger.debug(f"Updating agency_profiles {id} with data: {data}")
 
     service = Agency_profilesService(db)
     try:
-        # Only include non-None values for partial updates
         update_dict = {k: v for k, v in data.model_dump().items() if v is not None}
+        # 방어 코드: 혹시라도 verified/created_at이 포함됐을 경우 제거
+        update_dict.pop("verified", None)
+        update_dict.pop("created_at", None)
+
         result = await service.update(id, update_dict, user_id=str(current_user.id))
         if not result:
             logger.warning(f"Agency_profiles with id {id} not found for update")
             raise HTTPException(status_code=404, detail="Agency_profiles not found")
-        
+
         logger.info(f"Agency_profiles {id} updated successfully")
         return result
     except HTTPException:
