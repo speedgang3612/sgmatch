@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import logging
 import os
@@ -23,6 +24,26 @@ from services.mock_data import initialize_mock_data
 from services.auth import initialize_admin_user
 from core.redis import close_redis
 # MODULE_IMPORTS_END
+
+
+def run_alembic_migrations():
+    """서버 시작 시 Alembic 마이그레이션 자동 실행 (alembic upgrade head).
+
+    asyncio.to_thread()로 호출해야 함 — alembic/env.py가 내부적으로 asyncio.run()을
+    사용하는데, 이미 실행 중인 이벤트 루프 안에서 직접 호출하면 RuntimeError 발생.
+    스레드로 분리하면 해당 스레드에 루프가 없어 env.py의 asyncio.run()이 정상 동작함.
+    """
+    _log = logging.getLogger(__name__)
+    try:
+        from alembic import command
+        from alembic.config import Config
+        _log.info("=== Running Alembic migrations (upgrade head) ===")
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        _log.info("=== Alembic migrations completed successfully ===")
+    except Exception as exc:
+        _log.error(f"Alembic migration failed (server will start with existing schema): {exc}")
+        # 마이그레이션 실패해도 서버는 기동 — 에러만 로그에 기록
 
 
 def setup_logging():
@@ -70,6 +91,10 @@ def setup_logging():
 async def lifespan(app: FastAPI):
     logger = logging.getLogger(__name__)
     logger.info("=== Application startup initiated ===")
+
+    # DB 스키마 마이그레이션 자동 실행
+    # 바굷 스레드에서 실행 — env.py의 asyncio 충돌 방지
+    await asyncio.to_thread(run_alembic_migrations)
 
     # MODULE_STARTUP_START
     await initialize_database()
