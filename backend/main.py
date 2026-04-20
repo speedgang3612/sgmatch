@@ -197,7 +197,7 @@ def root():
     return {"message": "FastAPI Modular Template is running"}
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health_check():
     return {"status": "healthy"}
 
