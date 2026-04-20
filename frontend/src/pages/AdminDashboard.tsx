@@ -426,12 +426,12 @@ export default function AdminDashboard() {
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-4 text-center">
-                    <p className="text-2xl font-bold text-emerald-400">{activeAgencies.length}</p>
-                    <p className="text-[#6B7280] text-xs mt-1">활성 지사</p>
+                    <p className="text-2xl font-bold text-emerald-400">{approvedAgencies.length}</p>
+                    <p className="text-[#6B7280] text-xs mt-1">승인된 지사</p>
                   </div>
                   <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-4 text-center">
-                    <p className="text-2xl font-bold text-red-400">{blockedAgencies.length}</p>
-                    <p className="text-[#6B7280] text-xs mt-1">차단된 지사</p>
+                    <p className="text-2xl font-bold text-amber-400">{pendingAgencies.length}</p>
+                    <p className="text-[#6B7280] text-xs mt-1">대기중 지사</p>
                   </div>
                 </div>
               </div>
