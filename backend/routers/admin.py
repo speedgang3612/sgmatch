@@ -27,7 +27,8 @@ class RiderStatusUpdate(BaseModel):
 
 
 class AgencyStatusUpdate(BaseModel):
-    verified: Optional[bool] = None
+    # "pending": 대기중 / "approved": 승인 / "rejected": 거절
+    verified: Literal["pending", "approved", "rejected"]
 
 
 class PlatformStats(BaseModel):
@@ -67,9 +68,9 @@ async def get_platform_stats(
         pending_riders_sq = select(func.count(Rider_profiles.id)).where(
             (Rider_profiles.status == "inactive") | (Rider_profiles.status.is_(None))
         ).scalar_subquery()
-        # pending_agencies = verified=False인 지사 수 (관리자가 차단한 경우)
+        # pending_agencies = verified="pending"인 지사 수 (승인 대기 중)
         pending_agencies_sq = select(func.count(Agency_profiles.id)).where(
-            (Agency_profiles.verified == False) | (Agency_profiles.verified.is_(None))
+            Agency_profiles.verified == "pending"
         ).scalar_subquery()
 
         result = await db.execute(
@@ -252,4 +253,48 @@ async def update_agency_status(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error updating agency status: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+# ---------- 사업자등록증 URL 저장 ----------
+class AgencyBizLicenseUpdate(BaseModel):
+    """biz_license_url 저장 요청 스키마.
+    프론트엔드가 R2에 직접 업로드 후 URL만 주으면 저장.
+    """
+    biz_license_url: str
+
+
+@router.patch("/agencies/{agency_id}/biz-license")
+async def save_agency_biz_license(
+    agency_id: int,
+    data: AgencyBizLicenseUpdate,
+    admin_user: UserResponse = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Admin: 지사 사업자등록증 URL 저장.
+    프론트엔드는 R2에 직접 업로드 후 반환된 URL을 이 API로 저장한다.
+    """
+    try:
+        result = await db.execute(
+            select(Agency_profiles).where(Agency_profiles.id == agency_id)
+        )
+        agency = result.scalar_one_or_none()
+        if not agency:
+            raise HTTPException(status_code=404, detail="Agency not found")
+
+        agency.biz_license_url = data.biz_license_url
+        await db.commit()
+        await db.refresh(agency)
+
+        logger.info(f"Admin saved biz_license_url for agency {agency_id}")
+        return {
+            "message": "Biz license URL saved",
+            "id": agency_id,
+            "biz_license_url": agency.biz_license_url,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error saving biz license URL: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")

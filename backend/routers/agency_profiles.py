@@ -55,7 +55,8 @@ class Agency_profilesUpdateData(BaseModel):
     motorcycle_option: Optional[str] = None
     work_type: Optional[str] = None
     logo_url: Optional[str] = None  # 지사 로고 이미지 URL (Cloudflare R2)
-    # verified, created_at 필드 없음 → 일반 사용자 변경 불가
+    biz_license_url: Optional[str] = None  # 사업자등록증 URL (업로드 후 반영)
+    # verified, biz_license_url 업데이트는 허용, created_at은 변경 불가
 
 
 
@@ -75,7 +76,8 @@ class Agency_profilesResponse(BaseModel):
     motorcycle_option: Optional[str] = None
     work_type: Optional[str] = None
     logo_url: Optional[str] = None
-    verified: Optional[bool] = None
+    biz_license_url: Optional[str] = None
+    verified: Optional[str] = None  # "pending" | "approved" | "rejected"
     created_at: Optional[str] = None
 
     class Config:

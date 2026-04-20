@@ -1,6 +1,6 @@
 from core.database import Base
-from sqlalchemy import Boolean, Column, DateTime, Integer, String
-from sqlalchemy.sql import expression, func
+from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy.sql import func
 
 
 class Agency_profiles(Base):
@@ -24,9 +24,12 @@ class Agency_profiles(Base):
     # 지사 로고/이미지 URL — AddBranchModal에서 업로드 후 전달됨
     logo_url = Column(String, nullable=True)
 
-    # MVP: 가입 즉시 공고 등록 가능 — 신규 INSERT 시 서버에서 True로 자동 설정
-    # 관리자는 admin.py를 통해 False로 변경하여 사후 차단 가능
-    verified = Column(Boolean, nullable=False, server_default=expression.true())
+    # 사업자등록증 파일 URL — AgencyVerification에서 업로드 후 저장됨
+    biz_license_url = Column(String, nullable=True)
+
+    # 인증 상태: "pending"(대기중) | "approved"(승인) | "rejected"(거절)
+    # 가입 시 서버에서 "pending" 으로 자동 설정, 관리자만 변경 가능 (admin.py 경유)
+    verified = Column(String, nullable=False, server_default="pending")
 
     # 생성 시각은 서버에서 자동 기록
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
