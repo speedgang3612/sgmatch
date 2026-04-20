@@ -169,7 +169,7 @@ export default function Terms() {
                   <li>• <strong className="text-white">사업장 소재지:</strong> 서울특별시 은평구 응암로 373, 2층(녹번동, 역촌빌딩)</li>
                   <li>• <strong className="text-white">업태:</strong> 정보통신업</li>
                   <li>• <strong className="text-white">종목:</strong> 응용 소프트웨어 개발 및 공급업</li>
-                  <li>• <strong className="text-white">이메일:</strong> <span className="text-[#E63946]">support@speedgang.io</span></li>
+                  <li>• <strong className="text-white">이메일:</strong> <span className="text-[#E63946]">sgnext33@gmail.com</span></li>
                 </ul>
               </div>
             </section>

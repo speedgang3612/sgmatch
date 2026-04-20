@@ -71,7 +71,7 @@ export default function Footer() {
               <li className="text-[#9CA3AF] text-sm">대표: 김범준</li>
               <li className="text-[#9CA3AF] text-sm">사업자등록번호: 263-67-00924</li>
               <li className="text-[#9CA3AF] text-sm">서울특별시 은평구 응암로 373, 2층</li>
-              <li className="text-[#9CA3AF] text-sm">support@speedgang.io</li>
+              <li className="text-[#9CA3AF] text-sm">sgnext33@gmail.com</li>
               <li className="text-[#9CA3AF] text-sm">월 - 금, 오전 9시 - 오후 6시</li>
             </ul>
           </div>

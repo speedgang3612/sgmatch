@@ -166,7 +166,7 @@ export default function Privacy() {
                 <li>처리 정지 요구</li>
               </ul>
               <p className="mt-3">
-                위 권리 행사는 이메일(<span className="text-[#E63946]">support@speedgang.io</span>)을 통해 하실 수 있으며,
+                위 권리 행사는 이메일(<span className="text-[#E63946]">sgnext33@gmail.com</span>)을 통해 하실 수 있으며,
                 회사는 이에 대해 지체 없이 조치하겠습니다.
               </p>
             </section>
@@ -202,7 +202,7 @@ export default function Privacy() {
                   <li>• <strong className="text-white">사업자등록번호:</strong> 263-67-00924</li>
                   <li>• <strong className="text-white">대표자 / 개인정보 보호 책임자:</strong> 김범준</li>
                   <li>• <strong className="text-white">소재지:</strong> 서울특별시 은평구 응암로 373, 2층(녹번동, 역촌빌딩)</li>
-                  <li>• <strong className="text-white">이메일:</strong> <span className="text-[#E63946]">support@speedgang.io</span></li>
+                  <li>• <strong className="text-white">이메일:</strong> <span className="text-[#E63946]">sgnext33@gmail.com</span></li>
                 </ul>
               </div>
             </section>
