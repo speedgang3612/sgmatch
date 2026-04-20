@@ -1,0 +1,19 @@
+# 환경변수 파일 (민감 정보 포함 — 절대 커밋 금지)
+.env
+.env.local
+.env.*.local
+.env.production
+
+# 빌드 결과물
+dist/
+
+# 의존성
+node_modules/
+
+# 에디터
+.vscode/settings.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
