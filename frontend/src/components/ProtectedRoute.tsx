@@ -49,7 +49,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
             <div className="space-y-3 pt-2">
               <Button
                 id="protected-route-login-btn"
-                onClick={() => login()}
+                onClick={() => window.location.href = '/login'}
                 className="w-full bg-[#E63946] hover:bg-[#FF4D5A] text-white font-bold rounded-xl py-3"
               >
                 <LogIn className="mr-2 h-4 w-4" />

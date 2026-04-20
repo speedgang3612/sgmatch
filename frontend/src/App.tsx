@@ -32,6 +32,7 @@ const BranchRegister = lazy(() => import("./pages/BranchRegister"));
 const RiderRegister = lazy(() => import("./pages/RiderRegister"));
 const Contact = lazy(() => import("./pages/Contact"));
 const LogoutCallbackPage = lazy(() => import("./pages/LogoutCallbackPage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
 
 // 보호 라우트는 즉시 로드 (가벼운 컴포넌트)
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
@@ -55,6 +56,7 @@ function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<Register />} />
           <Route path="/pricing" element={<Pricing />} />
 

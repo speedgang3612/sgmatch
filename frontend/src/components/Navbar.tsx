@@ -207,7 +207,7 @@ export default function Navbar() {
             ) : (
               <div className="flex items-center gap-2">
                 <Button
-                  onClick={() => login()}
+                  onClick={() => window.location.href = '/login'}
                   variant="outline"
                   className="!bg-transparent border-[#2A2A2A] text-[#9CA3AF] hover:text-white hover:border-[#E63946] text-sm font-medium rounded-lg px-4 h-9 gap-1.5"
                 >
@@ -329,7 +329,7 @@ export default function Navbar() {
           ) : (
             <div className="space-y-2 pt-2 border-t border-[#2A2A2A]">
               <Button
-                onClick={() => { login(); setOpen(false); }}
+                onClick={() => { window.location.href = '/login'; setOpen(false); }}
                 variant="outline"
                 className="w-full !bg-transparent border-[#2A2A2A] text-[#9CA3AF] hover:text-white font-medium rounded-lg gap-1.5"
               >

@@ -686,18 +686,6 @@ export default function AdminDashboard() {
               )}
             </div>
           )}
-                                </Button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* ===== 인증 관리 탭 ===== */}
           {activeTab === "verification" && (

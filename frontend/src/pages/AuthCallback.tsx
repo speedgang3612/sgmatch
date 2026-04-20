@@ -1,68 +1,63 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/lib/supabase';
 
 /**
  * AuthCallback 페이지
  *
- * 백엔드 /api/v1/auth/callback 처리 후
- * 프론트엔드 /auth/callback?token=...&expires_at=...&token_type=Bearer 로 리다이렉트됨
- *
- * 이 페이지에서:
- * 1. URL 파라미터에서 token 추출
- * 2. localStorage에 토큰 저장
- * 3. 홈 또는 원래 경로로 이동
+ * Supabase OAuth / 이메일 인증 후 리다이렉트되는 경로.
+ * supabase-js가 URL hash/query에서 자동으로 세션을 추출하므로
+ * onAuthStateChange 이벤트를 기다렸다가 홈으로 이동한다.
  */
 export default function AuthCallback() {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    const expiresAt = searchParams.get('expires_at');
-    const tokenType = searchParams.get('token_type');
-
-    // 토큰이 있는 경우 저장 후 이동
-    if (token) {
-      try {
-        // JWT 토큰을 localStorage에 저장
-        // 백엔드가 OAuth 콜백 시점에 이미 올바른 role을 JWT에 포함했으므로
-        // 추가적인 role 업데이트(PATCH) 불필요
-        localStorage.setItem('access_token', token);
-        if (expiresAt) localStorage.setItem('token_expires_at', expiresAt);
-        if (tokenType) localStorage.setItem('token_type', tokenType);
-
-        // 원래 경로 또는 홈으로 이동
-        const fromUrl = searchParams.get('from_url') || '/';
-        navigate(fromUrl, { replace: true });
-      } catch (err) {
-        console.error('[AuthCallback] 토큰 저장 실패:', err);
-        setError('인증 토큰 저장에 실패했습니다. 다시 시도해주세요.');
+    // Supabase가 URL을 파싱하여 세션을 설정하는 동안 대기
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        // 로그인 완료 → 홈 또는 원래 경로로 이동
+        const params = new URLSearchParams(window.location.search);
+        const redirectTo = params.get('redirect') || '/';
+        navigate(redirectTo, { replace: true });
+        subscription.unsubscribe();
+        return;
       }
-      return;
-    }
+      if (event === 'PASSWORD_RECOVERY') {
+        navigate('/', { replace: true });
+        subscription.unsubscribe();
+        return;
+      }
+    });
 
+    // 3초 안에 세션이 없으면 에러 처리
+    const timeout = setTimeout(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate('/', { replace: true });
+      } else {
+        // URL에 에러 파라미터가 있는지 확인
+        const params = new URLSearchParams(window.location.search);
+        const errMsg = params.get('error_description') || params.get('error');
+        setError(errMsg ? decodeURIComponent(errMsg) : '인증 처리 중 문제가 발생했습니다.');
+      }
+      subscription.unsubscribe();
+    }, 3000);
 
-    // 토큰이 없는 경우 에러 처리
-    const errorMsg = searchParams.get('error') || searchParams.get('msg');
-    if (errorMsg) {
-      setError(decodeURIComponent(errorMsg));
-    } else {
-      setError('인증 처리 중 문제가 발생했습니다. 다시 시도해주세요.');
-    }
-  }, [searchParams, navigate]);
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
+  }, [navigate]);
 
-  const handleGoHome = () => {
-    navigate('/', { replace: true });
-  };
+  const handleGoHome = () => navigate('/', { replace: true });
+  const handleRetry = () => (window.location.href = '/login');
 
-  const handleRetry = () => {
-    window.location.href = '/';
-  };
-
-  // 에러 상태
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0A0A0A] text-white px-4">
@@ -70,10 +65,7 @@ export default function AuthCallback() {
           <div className="flex justify-center">
             <div className="relative">
               <div className="absolute inset-0 bg-[#E63946]/20 blur-xl rounded-full" />
-              <AlertCircle
-                className="relative h-12 w-12 text-[#E63946]"
-                strokeWidth={1.5}
-              />
+              <AlertCircle className="relative h-12 w-12 text-[#E63946]" strokeWidth={1.5} />
             </div>
           </div>
           <h1 className="text-2xl font-bold">인증 오류</h1>
@@ -98,7 +90,6 @@ export default function AuthCallback() {
     );
   }
 
-  // 로딩 상태 (토큰 처리 중)
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0A0A0A]">
       <div className="text-center">

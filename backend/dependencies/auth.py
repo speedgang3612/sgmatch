@@ -123,3 +123,74 @@ async def get_admin_user(current_user: UserResponse = Depends(get_current_user))
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user
+
+
+# ---------------------------------------------------------------------------
+# Supabase JWT 기반 인증 Dependency
+# ---------------------------------------------------------------------------
+# 기존 get_current_user() (자체 JWT) 와 병행 사용 가능.
+# Supabase Auth로 로그인한 사용자는 이 함수를 통해 인증한다.
+# ---------------------------------------------------------------------------
+
+from core.supabase import SupabaseTokenError, extract_app_role, verify_supabase_token  # noqa: E402
+
+
+async def get_current_user_supabase(
+    token: str = Depends(get_bearer_token),
+    db: AsyncSession = Depends(get_db),
+) -> UserResponse:
+    """
+    Supabase JWT 토큰으로 현재 인증된 유저를 반환한다.
+
+    - Authorization: Bearer <supabase_access_token> 헤더에서 토큰 추출
+    - SUPABASE_JWT_SECRET으로 로컬 검증 (네트워크 불필요)
+    - payload의 app_metadata.role 또는 user_metadata.role을 앱 role로 사용
+    """
+    try:
+        payload = verify_supabase_token(token)
+    except SupabaseTokenError as exc:
+        logger.warning("Supabase 토큰 검증 실패: %s", exc.message)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=exc.message,
+        )
+
+    user_id: str = payload.get("sub", "")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="유효하지 않은 인증 토큰입니다.",
+        )
+
+    email: str = payload.get("email", "")
+    role: str = extract_app_role(payload)
+    user_meta: dict = payload.get("user_metadata") or {}
+    name: str = (
+        user_meta.get("full_name")
+        or user_meta.get("name")
+        or user_meta.get("display_name")
+        or ""
+    )
+
+    user_hash = hashlib.sha256(user_id.encode()).hexdigest()[:8]
+    logger.debug("Supabase 인증 성공 (user_hash: %s, role: %s)", user_hash, role)
+
+    return UserResponse(
+        id=user_id,
+        email=email,
+        name=name,
+        role=role,
+        last_login=None,
+    )
+
+
+async def get_admin_user_supabase(
+    current_user: UserResponse = Depends(get_current_user_supabase),
+) -> UserResponse:
+    """Supabase JWT 기반 — admin role 확인 Dependency."""
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="관리자 권한이 필요합니다.",
+        )
+    return current_user
