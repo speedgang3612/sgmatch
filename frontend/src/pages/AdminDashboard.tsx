@@ -50,7 +50,8 @@ interface AgencyProfile {
   settlement_type?: string;
   motorcycle_option?: string;
   work_type?: string;
-  verified?: boolean;
+  verified?: string;        // "pending" | "approved" | "rejected"
+  biz_license_url?: string; // 사업자등록증 URL
   created_at?: string;
 }
 
@@ -100,8 +101,8 @@ export default function AdminDashboard() {
 
   // 필터 상태 — 라이더: all / active / inactive / rejected
   const [riderFilter, setRiderFilter] = useState<"all" | "active" | "inactive" | "rejected">("all");
-  // 필터 상태 — 지사: all / active / blocked
-  const [agencyFilter, setAgencyFilter] = useState<"all" | "active" | "blocked">("all");
+  // 필터 상태 — 지사: all / pending / approved / rejected
+  const [agencyFilter, setAgencyFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
 
   // Fetch platform stats via admin API
   const fetchStats = useCallback(async () => {
@@ -187,7 +188,7 @@ export default function AdminDashboard() {
   };
 
   // Update agency verified status via admin API
-  const updateAgencyVerified = async (agencyId: number, verified: boolean) => {
+  const updateAgencyVerified = async (agencyId: number, verified: "pending" | "approved" | "rejected") => {
     try {
       setUpdatingId(agencyId);
       await client.apiCall.invoke({
@@ -195,11 +196,10 @@ export default function AdminDashboard() {
         method: "PUT",
         data: { verified },
       });
+      const labelMap = { pending: "대기중", approved: "승인", rejected: "거절" };
       toast({
         title: "인증 상태 변경 완료",
-        description: verified
-          ? "지사가 인증되었습니다."
-          : "지사 인증이 해제되었습니다.",
+        description: `지사 상태가 "${labelMap[verified]}"으로 변경되었습니다.`,
       });
       await fetchAgencies();
       await fetchStats();
@@ -237,13 +237,29 @@ export default function AdminDashboard() {
     riderFilter === "rejected" ? rejectedRiders :
     riders;
 
-  // 지사 필터링
-  const activeAgencies = agencies.filter((a) => a.verified === true);
-  const blockedAgencies = agencies.filter((a) => a.verified === false || a.verified === null);
+  // 지사 필터링 (문자열 3상태)
+  const pendingAgencies  = agencies.filter((a) => !a.verified || a.verified === "pending");
+  const approvedAgencies = agencies.filter((a) => a.verified === "approved");
+  const rejectedAgencies = agencies.filter((a) => a.verified === "rejected");
   const filteredAgencies =
-    agencyFilter === "active" ? activeAgencies :
-    agencyFilter === "blocked" ? blockedAgencies :
+    agencyFilter === "pending"  ? pendingAgencies  :
+    agencyFilter === "approved" ? approvedAgencies :
+    agencyFilter === "rejected" ? rejectedAgencies :
     agencies;
+
+  // 지사 상태 변환 헬퍼
+  const verifiedLabel = (v?: string) =>
+    v === "approved" ? "승인" : v === "rejected" ? "거절" : "대기중";
+  const verifiedStyle = (v?: string) =>
+    v === "approved"
+      ? "bg-emerald-500/20 text-emerald-400"
+      : v === "rejected"
+      ? "bg-red-500/20 text-red-400"
+      : "bg-amber-500/20 text-amber-400";
+  const verifiedIconStyle = (v?: string) =>
+    v === "approved" ? "bg-emerald-500/10" : v === "rejected" ? "bg-red-500/10" : "bg-amber-500/10";
+  const verifiedIconColor = (v?: string) =>
+    v === "approved" ? "text-emerald-400" : v === "rejected" ? "text-red-400" : "text-amber-400";
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white flex">
@@ -335,9 +351,9 @@ export default function AdminDashboard() {
                 color: "text-amber-400",
               },
               {
-                label: "차단된 지사",
+                label: "승인 대기 지사",
                 value: loadingStats ? "..." : String(stats.pending_agencies),
-                color: "text-red-400",
+                color: "text-amber-400",
               },
             ].map((card, i) => (
               <div
@@ -597,9 +613,10 @@ export default function AdminDashboard() {
               {/* 필터 탭 */}
               <div className="flex gap-2 mb-5 flex-wrap">
                 {([
-                  { key: "all", label: `전체 (${agencies.length})` },
-                  { key: "active", label: `활성 (${activeAgencies.length})` },
-                  { key: "blocked", label: `차단 (${blockedAgencies.length})` },
+                  { key: "all",      label: `전체 (${agencies.length})` },
+                  { key: "pending",  label: `대기중 (${pendingAgencies.length})` },
+                  { key: "approved", label: `승인 (${approvedAgencies.length})` },
+                  { key: "rejected", label: `거절 (${rejectedAgencies.length})` },
                 ] as const).map((f) => (
                   <button
                     key={f.key}
@@ -647,33 +664,32 @@ export default function AdminDashboard() {
                           <td className="py-4 text-[#9CA3AF] hidden md:table-cell">{a.platform || "-"}</td>
                           <td className="py-4 text-[#9CA3AF] hidden lg:table-cell">{a.manager_name || "-"}</td>
                           <td className="py-4">
-                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                              a.verified ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
-                            }`}>
-                              {a.verified ? "활성" : "차단"}
+                            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${verifiedStyle(a.verified)}`}>
+                              {verifiedLabel(a.verified)}
                             </span>
                           </td>
                           <td className="py-4 text-right">
                             <div className="flex items-center justify-end gap-1">
-                              {a.verified ? (
-                                <Button
-                                  size="sm"
-                                  className="bg-red-600 hover:bg-red-500 text-white text-xs rounded-lg h-7 px-2.5 gap-1"
-                                  disabled={updatingId === a.id}
-                                  onClick={() => updateAgencyVerified(a.id, false)}
-                                >
-                                  {updatingId === a.id ? <Loader2 size={11} className="animate-spin" /> : <XCircle size={11} />}
-                                  차단하기
-                                </Button>
-                              ) : (
+                              {a.verified !== "approved" && (
                                 <Button
                                   size="sm"
                                   className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded-lg h-7 px-2.5 gap-1"
                                   disabled={updatingId === a.id}
-                                  onClick={() => updateAgencyVerified(a.id, true)}
+                                  onClick={() => updateAgencyVerified(a.id, "approved")}
                                 >
                                   {updatingId === a.id ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />}
-                                  활성화
+                                  승인
+                                </Button>
+                              )}
+                              {a.verified !== "rejected" && (
+                                <Button
+                                  size="sm"
+                                  className="bg-red-600 hover:bg-red-500 text-white text-xs rounded-lg h-7 px-2.5 gap-1"
+                                  disabled={updatingId === a.id}
+                                  onClick={() => updateAgencyVerified(a.id, "rejected")}
+                                >
+                                  {updatingId === a.id ? <Loader2 size={11} className="animate-spin" /> : <XCircle size={11} />}
+                                  거절
                                 </Button>
                               )}
                             </div>
@@ -693,37 +709,15 @@ export default function AdminDashboard() {
               {/* 인증 등급 설명 */}
               <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6">
                 <h3 className="text-xl font-bold mb-2">지사 인증 관리</h3>
-                <p className="text-[#6B7280] mb-6">
-                  3단계 인증 프로세스를 통해 지사의 신뢰도를 검증합니다.
-                </p>
+                <p className="text-[#6B7280] mb-6">지사 사업자등록증을 확인하고 승인 또는 거절하세요.</p>
                 <div className="flex flex-wrap gap-3 mb-4">
                   {[
-                    {
-                      label: "대기중",
-                      style:
-                        "bg-amber-500/20 text-amber-400 border-amber-500/30",
-                      desc: "가입 완료, 인증 미완료",
-                    },
-                    {
-                      label: "인증됨",
-                      style:
-                        "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-                      desc: "관리자 승인 완료",
-                    },
-                    {
-                      label: "추천",
-                      style:
-                        "bg-blue-500/20 text-blue-400 border-blue-500/30",
-                      desc: "인증 + 평점 4.0↑ + 정산 95%↑",
-                    },
+                    { label: "대기중",  style: "bg-amber-500/20 text-amber-400 border-amber-500/30",   desc: `가입 완료, 관리자 검토 대기 (${pendingAgencies.length}개)` },
+                    { label: "승인됨",  style: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", desc: `승인 완료 — 공고 등록 가능 (${approvedAgencies.length}개)` },
+                    { label: "거절됨",  style: "bg-red-500/20 text-red-400 border-red-500/30",         desc: `승인 거절 — 콘텐츠 비활성 (${rejectedAgencies.length}개)` },
                   ].map((badge, i) => (
-                    <div
-                      key={i}
-                      className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-4 flex-1 min-w-[200px]"
-                    >
-                      <span
-                        className={`inline-block text-xs font-medium px-3 py-1 rounded-full border mb-3 ${badge.style}`}
-                      >
+                    <div key={i} className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-4 flex-1 min-w-[200px]">
+                      <span className={`inline-block text-xs font-medium px-3 py-1 rounded-full border mb-3 ${badge.style}`}>
                         {badge.label}
                       </span>
                       <p className="text-[#9CA3AF] text-sm">{badge.desc}</p>
@@ -732,21 +726,23 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* 전체 지사 목록 */}
+              {/* 지사 목록 */}
               <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6">
-                <h3 className="text-lg font-bold mb-6">전체 지사 ({agencies.length})</h3>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold">전체 지사 ({agencies.length})</h3>
+                  {loadingAgencies && <Loader2 size={18} className="animate-spin text-[#6B7280]" />}
+                </div>
                 {agencies.length === 0 ? (
                   <p className="text-[#6B7280] text-sm py-4">등록된 지사가 없습니다.</p>
                 ) : (
                   <div className="space-y-4">
                     {agencies.map((agency) => (
                       <div key={agency.id} className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-5">
+                        {/* 헤더: 지사 정보 + 상태 등급 */}
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-4">
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                              agency.verified ? "bg-emerald-500/10" : "bg-red-500/10"
-                            }`}>
-                              <Building2 size={22} className={agency.verified ? "text-emerald-400" : "text-red-400"} />
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${verifiedIconStyle(agency.verified)}`}>
+                              <Building2 size={22} className={verifiedIconColor(agency.verified)} />
                             </div>
                             <div>
                               <p className="font-bold text-base">{agency.name}</p>
@@ -754,14 +750,17 @@ export default function AdminDashboard() {
                             </div>
                           </div>
                           <span className={`text-xs font-medium px-3 py-1.5 rounded-full border ${
-                            agency.verified
+                            agency.verified === "approved"
                               ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                              : "bg-red-500/20 text-red-400 border-red-500/30"
+                              : agency.verified === "rejected"
+                              ? "bg-red-500/20 text-red-400 border-red-500/30"
+                              : "bg-amber-500/20 text-amber-400 border-amber-500/30"
                           }`}>
-                            {agency.verified ? "활성" : "차단"}
+                            {agency.verified === "approved" ? "승인됨" : agency.verified === "rejected" ? "거절됨" : "대기중"}
                           </span>
                         </div>
 
+                        {/* 세부 정보 */}
                         <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-3">
                           <div className="bg-[#0A0A0A] rounded-lg p-3">
                             <p className="text-[#6B7280] text-xs mb-1">플랫폼</p>
@@ -781,24 +780,46 @@ export default function AdminDashboard() {
                           </div>
                         </div>
 
-                        <div className="flex gap-2">
-                          {agency.verified ? (
-                            <Button
-                              className="bg-red-600 hover:bg-red-500 text-white text-sm font-bold rounded-xl px-5 gap-1.5"
-                              disabled={updatingId === agency.id}
-                              onClick={() => updateAgencyVerified(agency.id, false)}
+                        {/* 액션 버튼 */}
+                        <div className="flex flex-wrap gap-2">
+                          {/* 서류 확인 버튼 */}
+                          {agency.biz_license_url && (
+                            <a
+                              href={agency.biz_license_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-sm font-bold rounded-xl px-5 py-2 bg-[#2A2A2A] hover:bg-[#3A3A3A] text-[#9CA3AF] hover:text-white transition-colors"
                             >
-                              {updatingId === agency.id ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
-                              차단하기
-                            </Button>
-                          ) : (
+                              <CheckCircle size={14} />
+                              서류 확인
+                            </a>
+                          )}
+
+                          {/* 승인 버튼: 대기중/거절된 경우 표시 */}
+                          {agency.verified !== "approved" && (
                             <Button
                               className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl px-5 gap-1.5"
                               disabled={updatingId === agency.id}
-                              onClick={() => updateAgencyVerified(agency.id, true)}
+                              onClick={() => updateAgencyVerified(agency.id, "approved")}
                             >
-                              {updatingId === agency.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-                              활성화
+                              {updatingId === agency.id
+                                ? <Loader2 size={14} className="animate-spin" />
+                                : <CheckCircle size={14} />}
+                              승인하기
+                            </Button>
+                          )}
+
+                          {/* 거절 버튼: 대기중/승인된 경우 표시 */}
+                          {agency.verified !== "rejected" && (
+                            <Button
+                              className="bg-red-600 hover:bg-red-500 text-white text-sm font-bold rounded-xl px-5 gap-1.5"
+                              disabled={updatingId === agency.id}
+                              onClick={() => updateAgencyVerified(agency.id, "rejected")}
+                            >
+                              {updatingId === agency.id
+                                ? <Loader2 size={14} className="animate-spin" />
+                                : <XCircle size={14} />}
+                              거절하기
                             </Button>
                           )}
                         </div>
