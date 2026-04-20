@@ -94,11 +94,11 @@ function FieldError({ error }: { error: string | null }) {
 }
 
 export default function Register() {
-  const { user, login, refetch } = useAuth();
+  const { user, session, login, refetch } = useAuth();
 
   // ── 이미 로그인된 유저의 역할을 agency로 업데이트하는 헬퍼 ──
   const updateUserRole = async (role: string) => {
-    const token = localStorage.getItem('access_token');
+    const token = session?.access_token ?? null;
     if (!token) return;
     try {
       const res = await fetch(`${getAPIBaseURL()}/api/v1/auth/me/role`, {
@@ -294,7 +294,7 @@ export default function Register() {
     setSaveError(null);
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = session?.access_token ?? null;
       const res = await fetch(`${getAPIBaseURL()}/api/v1/entities/rider_profiles`, {
         method: 'POST',
         headers: {
@@ -344,7 +344,7 @@ export default function Register() {
     setSaveError(null);
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = session?.access_token ?? null;
       const res = await fetch(`${getAPIBaseURL()}/api/v1/entities/companies`, {
         method: 'POST',
         headers: {
@@ -395,7 +395,7 @@ export default function Register() {
     setSaveError(null);
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = session?.access_token ?? null;
       const res = await fetch(`${getAPIBaseURL()}/api/v1/entities/agency_profiles`, {
         method: 'POST',
         headers: {
