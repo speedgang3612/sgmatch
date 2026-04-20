@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Dict
 
-from dependencies.auth import get_admin_user
+from dependencies.auth import get_admin_user_supabase as get_admin_user
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from schemas.auth import UserResponse

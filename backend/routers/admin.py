@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.redis import get_redis
-from dependencies.auth import get_admin_user
+from dependencies.auth import get_admin_user_supabase as get_admin_user
 from schemas.auth import UserResponse
 from models.rider_profiles import Rider_profiles
 from models.agency_profiles import Agency_profiles

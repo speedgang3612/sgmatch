@@ -8,7 +8,7 @@ import json
 import logging
 from typing import Any
 
-from dependencies.auth import get_current_user
+from dependencies.auth import get_current_user_supabase as get_current_user
 from fastapi import APIRouter, Depends, HTTPException, status
 from schemas.aihub import GenImgRequest, GenImgResponse, GenTxtRequest
 from schemas.auth import UserResponse

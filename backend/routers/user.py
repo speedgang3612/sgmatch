@@ -1,7 +1,7 @@
 from typing import Optional
 
 from core.database import get_db
-from dependencies.auth import get_current_user
+from dependencies.auth import get_current_user_supabase as get_current_user
 from fastapi import APIRouter, Depends, HTTPException, status
 from models.auth import User
 from pydantic import BaseModel

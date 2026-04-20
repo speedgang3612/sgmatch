@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from services.agency_profiles import Agency_profilesService
-from dependencies.auth import get_current_user
+from dependencies.auth import get_current_user_supabase as get_current_user
 from schemas.auth import UserResponse
 
 # Set up logging
