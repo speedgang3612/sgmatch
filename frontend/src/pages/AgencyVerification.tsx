@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +31,11 @@ import {
   Award,
   File,
   Trash2,
+  Loader2,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
+import { getAPIBaseURL } from "@/lib/config";
 
 const sidebarItems = [
   { icon: LayoutDashboard, label: "대시보드", href: "/agency" },
@@ -59,6 +63,7 @@ const sampleReviews = [
 
 export default function AgencyVerification() {
   const location = useLocation();
+  const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -74,6 +79,12 @@ export default function AgencyVerification() {
   const [selectedPlatform, setSelectedPlatform] = useState("");
   const [hasMotorcycleSupport, setHasMotorcycleSupport] = useState("");
 
+  // 지사 프로필 상태
+  const [agencyProfile, setAgencyProfile] = useState<{ id: number; biz_license_url?: string; verified?: string } | null>(null);
+  const [bizLicenseUrl, setBizLicenseUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   // 인증 상태 — localStorage에 영구 저장하여 새로고침해도 유지
   const [step1Submitted, setStep1Submitted] = useState(
     () => localStorage.getItem('agency_step1_submitted') === 'true'
@@ -82,24 +93,93 @@ export default function AgencyVerification() {
     () => localStorage.getItem('agency_step2_submitted') === 'true'
   );
 
-  const submitStep1 = () => {
+  // 마운트 시 지사 프로필 로드 (이미 제출된 biz_license_url 복원)
+  useEffect(() => {
+    const loadProfile = async () => {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+      try {
+        const res = await fetch(`${getAPIBaseURL()}/api/v1/entities/agency_profiles?limit=1`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const profile = data.items?.[0];
+        if (profile) {
+          setAgencyProfile(profile);
+          if (profile.biz_license_url) {
+            setBizLicenseUrl(profile.biz_license_url);
+            setBizLicense({ name: '사업자등록증 (업로드 완료)', size: '-', status: 'uploaded' });
+          }
+        }
+      } catch {
+        // 프로필 로드 실패 시 무시
+      }
+    };
+    loadProfile();
+  }, []);
+
+  // 사업자등록증: Supabase Storage에 실제 업로드 후 URL 반환
+  const uploadBizLicense = async (file: File) => {
+    if (!user?.id) {
+      setUploadError('로그인이 필요합니다.');
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const ext = file.name.split('.').pop() ?? 'pdf';
+      const path = `${user.id}/biz_license_${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage
+        .from('agency-docs')
+        .upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from('agency-docs').getPublicUrl(data.path);
+      setBizLicenseUrl(urlData.publicUrl);
+      setBizLicense({
+        name: file.name,
+        size: `${(file.size / 1024 / 1024).toFixed(1)}MB`,
+        status: 'uploaded',
+      });
+    } catch {
+      setUploadError('사업자등록증 업로드에 실패했습니다. Supabase Storage "agency-docs" 버킷을 확인해주세요.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // 기타 서류: 로컬 파일 선택만 (서버 업로드 없음)
+  const handleLocalFile = (
+    file: File,
+    setter: React.Dispatch<React.SetStateAction<UploadedFile | null>>
+  ) => {
+    setter({
+      name: file.name,
+      size: `${(file.size / 1024 / 1024).toFixed(1)}MB`,
+      status: 'uploaded',
+    });
+  };
+
+  const submitStep1 = async () => {
+    // 사업자등록증 URL을 백엔드에 저장
+    if (bizLicenseUrl && agencyProfile?.id) {
+      try {
+        const token = localStorage.getItem('access_token');
+        await fetch(`${getAPIBaseURL()}/api/v1/entities/agency_profiles/${agencyProfile.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ biz_license_url: bizLicenseUrl }),
+        });
+      } catch {
+        // URL 저장 실패해도 제출 완료 처리
+      }
+    }
     setStep1Submitted(true);
     localStorage.setItem('agency_step1_submitted', 'true');
   };
   const submitStep2 = () => {
     setStep2Submitted(true);
     localStorage.setItem('agency_step2_submitted', 'true');
-  };
-
-  const simulateUpload = (
-    setter: React.Dispatch<React.SetStateAction<UploadedFile | null>>,
-    fileName: string
-  ) => {
-    setter({
-      name: fileName,
-      size: `${(Math.random() * 5 + 0.5).toFixed(1)}MB`,
-      status: "uploaded",
-    });
   };
 
   const steps = [
@@ -377,23 +457,37 @@ export default function AgencyVerification() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() =>
-                            simulateUpload(setBizLicense, "사업자등록증_은평지사.pdf")
-                          }
-                          className="w-full border-2 border-dashed border-[#2A2A2A] hover:border-[#E63946]/50 rounded-xl p-8 text-center transition-colors group"
+                        <label
+                          htmlFor="biz-license-input"
+                          className={`w-full border-2 border-dashed rounded-xl p-8 text-center transition-colors group cursor-pointer block ${
+                            uploading
+                              ? 'border-[#E63946]/50 opacity-70'
+                              : 'border-[#2A2A2A] hover:border-[#E63946]/50'
+                          }`}
                         >
-                          <Upload
-                            size={32}
-                            className="mx-auto mb-3 text-[#6B7280] group-hover:text-[#E63946]"
-                          />
+                          {uploading ? (
+                            <Loader2 size={32} className="mx-auto mb-3 text-[#E63946] animate-spin" />
+                          ) : (
+                            <Upload size={32} className="mx-auto mb-3 text-[#6B7280] group-hover:text-[#E63946]" />
+                          )}
                           <p className="text-[#9CA3AF] text-sm mb-1">
-                            클릭하여 파일을 업로드하세요
+                            {uploading ? '업로드 중...' : '클릭하여 파일을 업로드하세요'}
                           </p>
-                          <p className="text-[#6B7280] text-xs">
-                            PDF, JPG, PNG (최대 10MB)
-                          </p>
-                        </button>
+                          <p className="text-[#6B7280] text-xs">PDF, JPG, PNG (최대 10MB)</p>
+                          <input
+                            id="biz-license-input"
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            className="hidden"
+                            disabled={uploading}
+                            onChange={(e) => e.target.files?.[0] && uploadBizLicense(e.target.files[0])}
+                          />
+                        </label>
+                      )}
+                      {uploadError && (
+                        <p className="text-red-400 text-xs mt-2 flex items-center gap-1">
+                          <AlertCircle size={12} /> {uploadError}
+                        </p>
                       )}
                     </div>
 
@@ -421,23 +515,21 @@ export default function AgencyVerification() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() =>
-                            simulateUpload(setIdCard, "대표자_신분증.jpg")
-                          }
-                          className="w-full border-2 border-dashed border-[#2A2A2A] hover:border-[#E63946]/50 rounded-xl p-8 text-center transition-colors group"
+                        <label
+                          htmlFor="id-card-input"
+                          className="w-full border-2 border-dashed border-[#2A2A2A] hover:border-[#E63946]/50 rounded-xl p-8 text-center transition-colors group cursor-pointer block"
                         >
-                          <Upload
-                            size={32}
-                            className="mx-auto mb-3 text-[#6B7280] group-hover:text-[#E63946]"
+                          <Upload size={32} className="mx-auto mb-3 text-[#6B7280] group-hover:text-[#E63946]" />
+                          <p className="text-[#9CA3AF] text-sm mb-1">클릭하여 파일을 업로드하세요</p>
+                          <p className="text-[#6B7280] text-xs">PDF, JPG, PNG (최대 10MB)</p>
+                          <input
+                            id="id-card-input"
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            className="hidden"
+                            onChange={(e) => e.target.files?.[0] && handleLocalFile(e.target.files[0], setIdCard)}
                           />
-                          <p className="text-[#9CA3AF] text-sm mb-1">
-                            클릭하여 파일을 업로드하세요
-                          </p>
-                          <p className="text-[#6B7280] text-xs">
-                            PDF, JPG, PNG (최대 10MB)
-                          </p>
-                        </button>
+                        </label>
                       )}
                     </div>
 
@@ -568,23 +660,21 @@ export default function AgencyVerification() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() =>
-                            simulateUpload(setPlatformContract, "배달플랫폼_계약서.pdf")
-                          }
-                          className="w-full border-2 border-dashed border-[#2A2A2A] hover:border-[#E63946]/50 rounded-xl p-8 text-center transition-colors group"
+                        <label
+                          htmlFor="platform-contract-input"
+                          className="w-full border-2 border-dashed border-[#2A2A2A] hover:border-[#E63946]/50 rounded-xl p-8 text-center transition-colors group cursor-pointer block"
                         >
-                          <Upload
-                            size={32}
-                            className="mx-auto mb-3 text-[#6B7280] group-hover:text-[#E63946]"
+                          <Upload size={32} className="mx-auto mb-3 text-[#6B7280] group-hover:text-[#E63946]" />
+                          <p className="text-[#9CA3AF] text-sm mb-1">클릭하여 계약서를 업로드하세요</p>
+                          <p className="text-[#6B7280] text-xs">PDF, JPG, PNG (최대 10MB)</p>
+                          <input
+                            id="platform-contract-input"
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            className="hidden"
+                            onChange={(e) => e.target.files?.[0] && handleLocalFile(e.target.files[0], setPlatformContract)}
                           />
-                          <p className="text-[#9CA3AF] text-sm mb-1">
-                            클릭하여 계약서를 업로드하세요
-                          </p>
-                          <p className="text-[#6B7280] text-xs">
-                            PDF, JPG, PNG (최대 10MB)
-                          </p>
-                        </button>
+                        </label>
                       )}
                     </div>
 
@@ -615,23 +705,21 @@ export default function AgencyVerification() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() =>
-                            simulateUpload(setInsuranceDoc, "보험가입_증빙서류.pdf")
-                          }
-                          className="w-full border-2 border-dashed border-[#2A2A2A] hover:border-[#E63946]/50 rounded-xl p-8 text-center transition-colors group"
+                        <label
+                          htmlFor="insurance-doc-input"
+                          className="w-full border-2 border-dashed border-[#2A2A2A] hover:border-[#E63946]/50 rounded-xl p-8 text-center transition-colors group cursor-pointer block"
                         >
-                          <Upload
-                            size={32}
-                            className="mx-auto mb-3 text-[#6B7280] group-hover:text-[#E63946]"
+                          <Upload size={32} className="mx-auto mb-3 text-[#6B7280] group-hover:text-[#E63946]" />
+                          <p className="text-[#9CA3AF] text-sm mb-1">클릭하여 보험 증빙을 업로드하세요</p>
+                          <p className="text-[#6B7280] text-xs">PDF, JPG, PNG (최대 10MB)</p>
+                          <input
+                            id="insurance-doc-input"
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            className="hidden"
+                            onChange={(e) => e.target.files?.[0] && handleLocalFile(e.target.files[0], setInsuranceDoc)}
                           />
-                          <p className="text-[#9CA3AF] text-sm mb-1">
-                            클릭하여 보험 증빙을 업로드하세요
-                          </p>
-                          <p className="text-[#6B7280] text-xs">
-                            PDF, JPG, PNG (최대 10MB)
-                          </p>
-                        </button>
+                        </label>
                       )}
                     </div>
 
@@ -672,23 +760,21 @@ export default function AgencyVerification() {
                               </button>
                             </div>
                           ) : (
-                            <button
-                              onClick={() =>
-                                simulateUpload(setLeaseContract, "오토바이_리스계약서.pdf")
-                              }
-                              className="w-full border-2 border-dashed border-[#2A2A2A] hover:border-[#E63946]/50 rounded-xl p-8 text-center transition-colors group"
+                            <label
+                              htmlFor="lease-contract-input"
+                              className="w-full border-2 border-dashed border-[#2A2A2A] hover:border-[#E63946]/50 rounded-xl p-8 text-center transition-colors group cursor-pointer block"
                             >
-                              <Upload
-                                size={32}
-                                className="mx-auto mb-3 text-[#6B7280] group-hover:text-[#E63946]"
+                              <Upload size={32} className="mx-auto mb-3 text-[#6B7280] group-hover:text-[#E63946]" />
+                              <p className="text-[#9CA3AF] text-sm mb-1">클릭하여 리스/렌트 계약서를 업로드하세요</p>
+                              <p className="text-[#6B7280] text-xs">PDF, JPG, PNG (최대 10MB)</p>
+                              <input
+                                id="lease-contract-input"
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                className="hidden"
+                                onChange={(e) => e.target.files?.[0] && handleLocalFile(e.target.files[0], setLeaseContract)}
                               />
-                              <p className="text-[#9CA3AF] text-sm mb-1">
-                                클릭하여 리스/렌트 계약서를 업로드하세요
-                              </p>
-                              <p className="text-[#6B7280] text-xs">
-                                PDF, JPG, PNG (최대 10MB)
-                              </p>
-                            </button>
+                            </label>
                           )}
                         </>
                       )}
