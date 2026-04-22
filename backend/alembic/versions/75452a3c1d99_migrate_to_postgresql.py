@@ -39,7 +39,9 @@ def upgrade() -> None:
     op.alter_column('agency_profiles', 'phone',
                existing_type=sa.VARCHAR(),
                nullable=True)
-    op.add_column('applications', sa.Column('applied_at', sa.DateTime(timezone=True), nullable=True))
+    existing_cols_applications = [c['name'] for c in inspector.get_columns('applications')]
+    if 'applied_at' not in existing_cols_applications:
+        op.add_column('applications', sa.Column('applied_at', sa.DateTime(timezone=True), nullable=True))
     op.add_column('job_listings', sa.Column('company_id', sa.Integer(), nullable=True))
     op.add_column('job_listings', sa.Column('agency_id', sa.Integer(), nullable=True))
     op.add_column('job_listings', sa.Column('company_name', sa.String(), nullable=True))
@@ -68,7 +70,11 @@ def downgrade() -> None:
     op.drop_column('job_listings', 'company_name')
     op.drop_column('job_listings', 'agency_id')
     op.drop_column('job_listings', 'company_id')
-    op.drop_column('applications', 'applied_at')
+    _bind = op.get_bind()
+    _inspector = sa.inspect(_bind)
+    _existing_cols = [c['name'] for c in _inspector.get_columns('applications')]
+    if 'applied_at' in _existing_cols:
+        op.drop_column('applications', 'applied_at')
     op.alter_column('agency_profiles', 'phone',
                existing_type=sa.VARCHAR(),
                nullable=False)
