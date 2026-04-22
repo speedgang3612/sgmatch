@@ -42,10 +42,15 @@ def upgrade() -> None:
     existing_cols_applications = [c['name'] for c in inspector.get_columns('applications')]
     if 'applied_at' not in existing_cols_applications:
         op.add_column('applications', sa.Column('applied_at', sa.DateTime(timezone=True), nullable=True))
-    op.add_column('job_listings', sa.Column('company_id', sa.Integer(), nullable=True))
-    op.add_column('job_listings', sa.Column('agency_id', sa.Integer(), nullable=True))
-    op.add_column('job_listings', sa.Column('company_name', sa.String(), nullable=True))
-    op.add_column('job_listings', sa.Column('pay_per_delivery', sa.String(), nullable=True))
+    existing_cols_job_listings = [c['name'] for c in inspector.get_columns('job_listings')]
+    if 'company_id' not in existing_cols_job_listings:
+        op.add_column('job_listings', sa.Column('company_id', sa.Integer(), nullable=True))
+    if 'agency_id' not in existing_cols_job_listings:
+        op.add_column('job_listings', sa.Column('agency_id', sa.Integer(), nullable=True))
+    if 'company_name' not in existing_cols_job_listings:
+        op.add_column('job_listings', sa.Column('company_name', sa.String(), nullable=True))
+    if 'pay_per_delivery' not in existing_cols_job_listings:
+        op.add_column('job_listings', sa.Column('pay_per_delivery', sa.String(), nullable=True))
     op.alter_column('job_listings', 'title',
                existing_type=sa.VARCHAR(),
                nullable=True)

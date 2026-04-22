@@ -19,7 +19,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """job_listings 테이블에 platform 컬럼 추가."""
-    op.add_column('job_listings', sa.Column('platform', sa.String(), nullable=True))
+    _cols = [c['name'] for c in sa.inspect(op.get_bind()).get_columns('job_listings')]
+    if 'platform' not in _cols:
+        op.add_column('job_listings', sa.Column('platform', sa.String(), nullable=True))
 
 
 def downgrade() -> None:

@@ -30,10 +30,12 @@ def upgrade() -> None:
     2. biz_license_url 컬럼 추가
     """
     # Step 1: 임시 컬럼 verified_str 추가
-    op.add_column(
-        'agency_profiles',
-        sa.Column('verified_str', sa.String(), nullable=True)
-    )
+    _cols_ap = [c['name'] for c in sa.inspect(op.get_bind()).get_columns('agency_profiles')]
+    if 'verified_str' not in _cols_ap:
+        op.add_column(
+            'agency_profiles',
+            sa.Column('verified_str', sa.String(), nullable=True)
+        )
 
     # Step 2: 기존 Boolean 값을 String으로 복사
     op.execute(
@@ -62,10 +64,12 @@ def upgrade() -> None:
     )
 
     # Step 6: biz_license_url 컬럼 추가
-    op.add_column(
-        'agency_profiles',
-        sa.Column('biz_license_url', sa.String(), nullable=True)
-    )
+    _cols_ap2 = [c['name'] for c in sa.inspect(op.get_bind()).get_columns('agency_profiles')]
+    if 'biz_license_url' not in _cols_ap2:
+        op.add_column(
+            'agency_profiles',
+            sa.Column('biz_license_url', sa.String(), nullable=True)
+        )
 
 
 def downgrade() -> None:
@@ -78,10 +82,12 @@ def downgrade() -> None:
     op.drop_column('agency_profiles', 'biz_license_url')
 
     # Step 2: 임시 Boolean 컬럼 추가
-    op.add_column(
-        'agency_profiles',
-        sa.Column('verified_bool', sa.Boolean(), nullable=True)
-    )
+    _cols_ap_dn = [c['name'] for c in sa.inspect(op.get_bind()).get_columns('agency_profiles')]
+    if 'verified_bool' not in _cols_ap_dn:
+        op.add_column(
+            'agency_profiles',
+            sa.Column('verified_bool', sa.Boolean(), nullable=True)
+        )
 
     # Step 3: String → Boolean 변환
     op.execute(
