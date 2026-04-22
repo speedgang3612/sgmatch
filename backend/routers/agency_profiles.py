@@ -231,10 +231,10 @@ async def create_agency_profiles(
     service = Agency_profilesService(db)
     try:
         payload = data.model_dump()
+        # None인 필드 제거 — DB server_default가 정상 동작하도록
+        payload = {k: v for k, v in payload.items() if v is not None}
         # MVP: 서버에서 인증 상태 강제 주입 — 클라이언트 조작 불가
         payload["verified"] = "pending"
-        # created_at은 DB server_default(func.now())로 자동 설정되므로 전달하지 않음
-        payload.pop("created_at", None)
 
         result = await service.create(payload, user_id=str(current_user.id))
         if not result:
@@ -247,7 +247,7 @@ async def create_agency_profiles(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error creating agency_profiles: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
 @router.post("/batch", response_model=List[Agency_profilesResponse], status_code=201)
