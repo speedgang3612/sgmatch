@@ -94,7 +94,8 @@ function FieldError({ error }: { error: string | null }) {
 }
 
 export default function Register() {
-  const { user, session, login, refetch } = useAuth();
+  const { user, session, loading, login, refetch } = useAuth();
+  console.log('[Register] session:', session, 'loading:', loading);
 
   // ── 이미 로그인된 유저의 역할을 agency로 업데이트하는 헬퍼 ──
   const updateUserRole = async (role: string) => {
