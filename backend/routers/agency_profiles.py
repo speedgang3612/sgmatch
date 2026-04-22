@@ -232,7 +232,7 @@ async def create_agency_profiles(
     try:
         payload = data.model_dump()
         # MVP: 서버에서 인증 상태 강제 주입 — 클라이언트 조작 불가
-        payload["verified"] = True
+        payload["verified"] = "pending"
         # created_at은 DB server_default(func.now())로 자동 설정되므로 전달하지 않음
         payload.pop("created_at", None)
 
@@ -240,7 +240,7 @@ async def create_agency_profiles(
         if not result:
             raise HTTPException(status_code=400, detail="Failed to create agency_profiles")
 
-        logger.info(f"Agency_profiles created with id={result.id}, verified=True (서버 강제)")
+        logger.info(f"Agency_profiles created with id={result.id}, verified='pending' (서버 강제)")
         return result
     except ValueError as e:
         logger.error(f"Validation error creating agency_profiles: {str(e)}")
