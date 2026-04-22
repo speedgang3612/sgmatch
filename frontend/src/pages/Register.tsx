@@ -416,7 +416,7 @@ export default function Register() {
           settlement_type: branchSettlement,
           motorcycle_option: branchMotorcycle,
           work_type: branchWorkType,
-          verified: false,
+          verified: "pending",
           created_at: new Date().toISOString().replace("T", " ").slice(0, 19),
         }),
       });
