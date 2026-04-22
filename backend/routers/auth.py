@@ -16,7 +16,7 @@ from core.auth import (
 )
 from core.config import settings
 from core.database import get_db
-from dependencies.auth import get_current_user, revoke_token
+from dependencies.auth import get_current_user, get_current_user_supabase, revoke_token
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.responses import RedirectResponse
@@ -259,7 +259,7 @@ class RoleUpdateRequest(_BaseModel):
 @router.patch("/me/role")
 async def update_my_role(
     body: RoleUpdateRequest,
-    current_user: UserResponse = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user_supabase),
     db: AsyncSession = Depends(get_db),
 ):
     """로그인한 사용자의 역할을 업데이트한다.
