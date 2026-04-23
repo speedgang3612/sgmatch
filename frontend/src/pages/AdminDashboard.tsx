@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { client } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { getAPIBaseURL } from "@/lib/config";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Zap,
   LayoutDashboard,
@@ -82,6 +83,14 @@ type TabKey =
 
 export default function AdminDashboard() {
   const { toast } = useToast();
+  const { session } = useAuth();
+
+  // 최신 토큰을 ref로 관리 (useCallback 클로저의 stale 토큰 문제 방지)
+  const tokenRef = useRef<string | null>(null);
+  useEffect(() => {
+    tokenRef.current = session?.access_token ?? null;
+  }, [session]);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
 
@@ -108,13 +117,13 @@ export default function AdminDashboard() {
   const fetchStats = useCallback(async () => {
     try {
       setLoadingStats(true);
-      const response = await client.apiCall.invoke({
-        url: "/api/v1/admin/stats",
-        method: "GET",
+      const token = tokenRef.current;
+      const res = await fetch(`${getAPIBaseURL()}/api/v1/admin/stats`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      if (response?.data) {
-        setStats(response.data as PlatformStats);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setStats(data as PlatformStats);
     } catch (err) {
       console.error("Failed to fetch stats:", err);
     } finally {
@@ -126,14 +135,14 @@ export default function AdminDashboard() {
   const fetchRiders = useCallback(async () => {
     try {
       setLoadingRiders(true);
-      const response = await client.apiCall.invoke({
-        url: "/api/v1/admin/riders",
-        method: "GET",
-        data: { limit: 200, skip: 0 },
-      });
-      if (response?.data?.items) {
-        setRiders(response.data.items as RiderProfile[]);
-      }
+      const token = tokenRef.current;
+      const res = await fetch(
+        `${getAPIBaseURL()}/api/v1/admin/riders?limit=200&skip=0`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data?.items) setRiders(data.items as RiderProfile[]);
     } catch (err) {
       console.error("Failed to fetch riders:", err);
     } finally {
@@ -145,14 +154,14 @@ export default function AdminDashboard() {
   const fetchAgencies = useCallback(async () => {
     try {
       setLoadingAgencies(true);
-      const response = await client.apiCall.invoke({
-        url: "/api/v1/admin/agencies",
-        method: "GET",
-        data: { limit: 200, skip: 0 },
-      });
-      if (response?.data?.items) {
-        setAgencies(response.data.items as AgencyProfile[]);
-      }
+      const token = tokenRef.current;
+      const res = await fetch(
+        `${getAPIBaseURL()}/api/v1/admin/agencies?limit=200&skip=0`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data?.items) setAgencies(data.items as AgencyProfile[]);
     } catch (err) {
       console.error("Failed to fetch agencies:", err);
     } finally {
@@ -164,11 +173,19 @@ export default function AdminDashboard() {
   const updateRiderStatus = async (riderId: number, newStatus: string) => {
     try {
       setUpdatingId(riderId);
-      await client.apiCall.invoke({
-        url: `/api/v1/admin/riders/${riderId}/status`,
-        method: "PUT",
-        data: { status: newStatus },
-      });
+      const token = tokenRef.current;
+      const res = await fetch(
+        `${getAPIBaseURL()}/api/v1/admin/riders/${riderId}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       toast({
         title: "상태 변경 완료",
         description: `라이더 상태가 "${newStatus}"(으)로 변경되었습니다.`,
@@ -191,11 +208,19 @@ export default function AdminDashboard() {
   const updateAgencyVerified = async (agencyId: number, verified: "pending" | "approved" | "rejected") => {
     try {
       setUpdatingId(agencyId);
-      await client.apiCall.invoke({
-        url: `/api/v1/admin/agencies/${agencyId}/status`,
-        method: "PUT",
-        data: { verified },
-      });
+      const token = tokenRef.current;
+      const res = await fetch(
+        `${getAPIBaseURL()}/api/v1/admin/agencies/${agencyId}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ verified }),
+        }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const labelMap = { pending: "대기중", approved: "승인", rejected: "거절" };
       toast({
         title: "인증 상태 변경 완료",
