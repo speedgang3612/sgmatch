@@ -121,9 +121,9 @@ export default function Pricing() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[#E63946]/5 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-4xl mx-auto text-center relative z-10">
-          <div className="inline-flex items-center gap-2 bg-[#E63946]/20 border border-[#E63946]/50 rounded-full px-4 py-2 mb-6">
-            <Zap size={15} className="text-[#E63946]" />
-            <span className="text-[#E63946] text-sm font-bold">구인구직 플랫폼 요금제</span>
+          <div className="inline-flex items-center gap-3 bg-[#E63946]/20 border border-[#E63946]/50 rounded-full px-10 py-5 mb-6">
+            <Zap size={36} className="text-[#E63946]" />
+            <span className="text-[#E63946] text-2xl font-bold">매칭플랫폼 구독플랜</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-5 leading-tight tracking-tight">
