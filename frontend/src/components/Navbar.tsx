@@ -50,15 +50,15 @@ export default function Navbar() {
   const links = isAgency
     ? [
         { label: "홈", href: "/" },
-        { label: "요금제", href: "/pricing" },
         { label: "채용공고 등록", href: "/agency/listings" },
+        { label: "구독플랜", href: "/pricing" },
         { label: "정산프로그램", href: "https://sgnext.co.kr", isNew: true, isExternal: true },
       ]
     : [
         { label: "홈", href: "/" },
-        { label: "요금제", href: "/pricing" },
         { label: "라이더 대시보드", href: "/rider" },
         { label: "지사 대시보드", href: "/agency" },
+        { label: "구독플랜", href: "/pricing" },
         { label: "정산프로그램", href: "https://sgnext.co.kr", isNew: true, isExternal: true },
       ];
 
