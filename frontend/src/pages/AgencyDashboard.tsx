@@ -734,7 +734,7 @@ export default function AgencyDashboard() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                      {branches.map((branch) => (
+                      {branches.filter((branch) => branch.verified !== 'rejected').map((branch) => (
                         <div
                           key={branch.id}
                           className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6 hover:border-[#E63946]/50 transition-all duration-300"
