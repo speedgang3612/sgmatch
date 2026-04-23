@@ -72,13 +72,6 @@ export default function AgencyVerification() {
   const [idCard, setIdCard] = useState<UploadedFile | null>(null);
   const [bizAddress, setBizAddress] = useState("");
 
-  // 2단계 상태
-  const [platformContract, setPlatformContract] = useState<UploadedFile | null>(null);
-  const [insuranceDoc, setInsuranceDoc] = useState<UploadedFile | null>(null);
-  const [leaseContract, setLeaseContract] = useState<UploadedFile | null>(null);
-  const [selectedPlatform, setSelectedPlatform] = useState("");
-  const [hasMotorcycleSupport, setHasMotorcycleSupport] = useState("");
-
   // 지사 프로필 상태
   const [agencyProfile, setAgencyProfile] = useState<{ id: number; biz_license_url?: string; verified?: string } | null>(null);
   const [bizLicenseUrl, setBizLicenseUrl] = useState<string | null>(null);
@@ -88,9 +81,6 @@ export default function AgencyVerification() {
   // 인증 상태 — localStorage에 영구 저장하여 새로고침해도 유지
   const [step1Submitted, setStep1Submitted] = useState(
     () => localStorage.getItem('agency_step1_submitted') === 'true'
-  );
-  const [step2Submitted, setStep2Submitted] = useState(
-    () => localStorage.getItem('agency_step2_submitted') === 'true'
   );
 
   // 마운트 시 지사 프로필 로드 (이미 제출된 biz_license_url 복원)
@@ -177,21 +167,16 @@ export default function AgencyVerification() {
     setStep1Submitted(true);
     localStorage.setItem('agency_step1_submitted', 'true');
   };
-  const submitStep2 = () => {
-    setStep2Submitted(true);
-    localStorage.setItem('agency_step2_submitted', 'true');
-  };
+
 
   const steps = [
     { num: 1, label: "기본 서류 인증", icon: FileText },
-    { num: 2, label: "운영 실태 확인", icon: Building2 },
-    { num: 3, label: "라이더 평가", icon: Star },
+    { num: 2, label: "라이더 평가", icon: Star },
   ];
 
   const getStepStatus = (stepNum: number) => {
     if (stepNum === 1 && step1Submitted) return "completed";
-    if (stepNum === 2 && step2Submitted) return "completed";
-    if (stepNum === 3 && step1Submitted && step2Submitted) return "active";
+    if (stepNum === 2 && step1Submitted) return "active";
     if (stepNum === currentStep) return "active";
     if (stepNum < currentStep) return "completed";
     return "pending";
@@ -252,7 +237,7 @@ export default function AgencyVerification() {
               지사 <span className="text-[#E63946]">인증</span>
             </h1>
             <p className="text-[#6B7280] mt-1">
-              3단계 인증을 완료하면 라이더에게 신뢰할 수 있는 지사로 표시됩니다.
+              2단계 인증을 완료하면 라이더에게 신뢰할 수 있는 지사로 표시됩니다.
             </p>
           </div>
 
@@ -269,8 +254,8 @@ export default function AgencyVerification() {
               {
                 label: "인증됨",
                 color: "emerald",
-                condition: "1단계 + 2단계 완료",
-                achieved: step1Submitted && step2Submitted,
+                condition: "1단계 완료",
+                achieved: step1Submitted,
                 icon: CheckCircle,
               },
               {
@@ -582,225 +567,7 @@ export default function AgencyVerification() {
             </div>
           )}
 
-          {/* 2단계: 운영 실태 확인 */}
-          {currentStep === 2 && (
-            <div className="space-y-6">
-              <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-[#E63946]/10 rounded-xl flex items-center justify-center">
-                    <Building2 size={20} className="text-[#E63946]" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold">2단계: 운영 실태 확인</h3>
-                    <p className="text-[#6B7280] text-xs">
-                      배달 플랫폼 계약서, 보험 증빙, 오토바이 계약서를 확인합니다
-                    </p>
-                  </div>
-                </div>
 
-                {!step1Submitted ? (
-                  <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-8 text-center">
-                    <Clock size={40} className="text-[#6B7280] mx-auto mb-3" />
-                    <h4 className="font-bold text-[#9CA3AF] mb-1">1단계를 먼저 완료해주세요</h4>
-                    <p className="text-[#6B7280] text-sm">
-                      기본 서류 인증이 승인된 후 2단계를 진행할 수 있습니다.
-                    </p>
-                    <Button
-                      onClick={() => setCurrentStep(1)}
-                      className="mt-4 bg-[#E63946] hover:bg-[#FF4D5A] text-white font-bold rounded-xl"
-                    >
-                      1단계로 이동
-                    </Button>
-                  </div>
-                ) : step2Submitted ? (
-                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-6 text-center">
-                    <CheckCircle size={40} className="text-emerald-400 mx-auto mb-3" />
-                    <h4 className="font-bold text-emerald-400 mb-1">2단계 제출 완료</h4>
-                    <p className="text-[#9CA3AF] text-sm">
-                      관리자 검토 중입니다. 승인 시 &quot;인증됨&quot; 배지가 부여됩니다.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {/* 배달 플랫폼 계약서 */}
-                    <div>
-                      <label className="text-white text-sm font-medium mb-2 block">
-                        배달 플랫폼 계약서 <span className="text-[#E63946]">*</span>
-                      </label>
-                      <div className="mb-3">
-                        <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
-                          <SelectTrigger className="bg-[#111111] border-[#2A2A2A] text-white rounded-xl h-12">
-                            <SelectValue placeholder="플랫폼 선택" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-[#1A1A1A] border-[#2A2A2A]">
-                            <SelectItem value="baemin">배달의민족</SelectItem>
-                            <SelectItem value="coupang">쿠팡이츠</SelectItem>
-                            <SelectItem value="yogiyo">요기요</SelectItem>
-                            <SelectItem value="barogo">바로고</SelectItem>
-                            <SelectItem value="other">기타</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {platformContract ? (
-                        <div className="flex items-center justify-between bg-[#111111] border border-[#2A2A2A] rounded-xl p-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center">
-                              <File size={18} className="text-emerald-400" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium">{platformContract.name}</p>
-                              <p className="text-[#6B7280] text-xs">{platformContract.size}</p>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => setPlatformContract(null)}
-                            className="text-[#6B7280] hover:text-red-400 p-1.5 rounded-lg hover:bg-[#2A2A2A] transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ) : (
-                        <label
-                          htmlFor="platform-contract-input"
-                          className="w-full border-2 border-dashed border-[#2A2A2A] hover:border-[#E63946]/50 rounded-xl p-8 text-center transition-colors group cursor-pointer block"
-                        >
-                          <Upload size={32} className="mx-auto mb-3 text-[#6B7280] group-hover:text-[#E63946]" />
-                          <p className="text-[#9CA3AF] text-sm mb-1">클릭하여 계약서를 업로드하세요</p>
-                          <p className="text-[#6B7280] text-xs">PDF, JPG, PNG (최대 10MB)</p>
-                          <input
-                            id="platform-contract-input"
-                            type="file"
-                            accept=".pdf,.jpg,.jpeg,.png"
-                            className="hidden"
-                            onChange={(e) => e.target.files?.[0] && handleLocalFile(e.target.files[0], setPlatformContract)}
-                          />
-                        </label>
-                      )}
-                    </div>
-
-                    {/* 라이더 보험 가입 증빙 */}
-                    <div>
-                      <label className="text-white text-sm font-medium mb-2 block">
-                        라이더 보험 가입 증빙 <span className="text-[#E63946]">*</span>
-                      </label>
-                      <p className="text-[#6B7280] text-xs mb-3">
-                        산재보험, 고용보험 등 라이더 보호를 위한 보험 가입 증빙서류
-                      </p>
-                      {insuranceDoc ? (
-                        <div className="flex items-center justify-between bg-[#111111] border border-[#2A2A2A] rounded-xl p-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center">
-                              <File size={18} className="text-emerald-400" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium">{insuranceDoc.name}</p>
-                              <p className="text-[#6B7280] text-xs">{insuranceDoc.size}</p>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => setInsuranceDoc(null)}
-                            className="text-[#6B7280] hover:text-red-400 p-1.5 rounded-lg hover:bg-[#2A2A2A] transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ) : (
-                        <label
-                          htmlFor="insurance-doc-input"
-                          className="w-full border-2 border-dashed border-[#2A2A2A] hover:border-[#E63946]/50 rounded-xl p-8 text-center transition-colors group cursor-pointer block"
-                        >
-                          <Upload size={32} className="mx-auto mb-3 text-[#6B7280] group-hover:text-[#E63946]" />
-                          <p className="text-[#9CA3AF] text-sm mb-1">클릭하여 보험 증빙을 업로드하세요</p>
-                          <p className="text-[#6B7280] text-xs">PDF, JPG, PNG (최대 10MB)</p>
-                          <input
-                            id="insurance-doc-input"
-                            type="file"
-                            accept=".pdf,.jpg,.jpeg,.png"
-                            className="hidden"
-                            onChange={(e) => e.target.files?.[0] && handleLocalFile(e.target.files[0], setInsuranceDoc)}
-                          />
-                        </label>
-                      )}
-                    </div>
-
-                    {/* 오토바이 리스/렌트 계약서 */}
-                    <div>
-                      <label className="text-white text-sm font-medium mb-2 block">
-                        오토바이 리스/렌트 계약서
-                      </label>
-                      <div className="mb-3">
-                        <Select value={hasMotorcycleSupport} onValueChange={setHasMotorcycleSupport}>
-                          <SelectTrigger className="bg-[#111111] border-[#2A2A2A] text-white rounded-xl h-12">
-                            <SelectValue placeholder="오토바이 리스/렌탈 여부" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-[#1A1A1A] border-[#2A2A2A]">
-                            <SelectItem value="lease">리스</SelectItem>
-                            <SelectItem value="rental">렌탈</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {(hasMotorcycleSupport === "lease" || hasMotorcycleSupport === "rental") && (
-                        <>
-                          {leaseContract ? (
-                            <div className="flex items-center justify-between bg-[#111111] border border-[#2A2A2A] rounded-xl p-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center">
-                                  <File size={18} className="text-emerald-400" />
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium">{leaseContract.name}</p>
-                                  <p className="text-[#6B7280] text-xs">{leaseContract.size}</p>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => setLeaseContract(null)}
-                                className="text-[#6B7280] hover:text-red-400 p-1.5 rounded-lg hover:bg-[#2A2A2A] transition-colors"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          ) : (
-                            <label
-                              htmlFor="lease-contract-input"
-                              className="w-full border-2 border-dashed border-[#2A2A2A] hover:border-[#E63946]/50 rounded-xl p-8 text-center transition-colors group cursor-pointer block"
-                            >
-                              <Upload size={32} className="mx-auto mb-3 text-[#6B7280] group-hover:text-[#E63946]" />
-                              <p className="text-[#9CA3AF] text-sm mb-1">클릭하여 리스/렌트 계약서를 업로드하세요</p>
-                              <p className="text-[#6B7280] text-xs">PDF, JPG, PNG (최대 10MB)</p>
-                              <input
-                                id="lease-contract-input"
-                                type="file"
-                                accept=".pdf,.jpg,.jpeg,.png"
-                                className="hidden"
-                                onChange={(e) => e.target.files?.[0] && handleLocalFile(e.target.files[0], setLeaseContract)}
-                              />
-                            </label>
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    <div className="flex gap-3 pt-2">
-                      <Button
-                        onClick={() => submitStep2()}
-                        disabled={!platformContract || !insuranceDoc || !selectedPlatform}
-                        className="bg-[#E63946] hover:bg-[#FF4D5A] text-white font-bold rounded-xl px-8 py-6 text-base disabled:opacity-50"
-                      >
-                        2단계 제출하기
-                      </Button>
-                      <Button
-                        onClick={() => setCurrentStep(1)}
-                        variant="outline"
-                        className="!bg-transparent border-[#2A2A2A] text-[#9CA3AF] hover:text-white rounded-xl px-6 py-6"
-                      >
-                        이전 단계
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
 
           {/* 3단계: 라이더 평가 기반 인증 */}
           {currentStep === 3 && (
@@ -818,11 +585,11 @@ export default function AgencyVerification() {
                   </div>
                 </div>
 
-                {!(step1Submitted && step2Submitted) ? (
+                {!step1Submitted ? (
                   <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-8 text-center">
                     <Clock size={40} className="text-[#6B7280] mx-auto mb-3" />
                     <h4 className="font-bold text-[#9CA3AF] mb-1">
-                      1단계와 2단계를 먼저 완료해주세요
+                      1단계를 먼저 완료해주세요
                     </h4>
                     <p className="text-[#6B7280] text-sm">
                       기본 인증이 완료된 후 라이더 평가 데이터가 수집됩니다.
@@ -1047,7 +814,7 @@ export default function AgencyVerification() {
 
               <div className="flex gap-3">
                 <Button
-                  onClick={() => setCurrentStep(2)}
+                  onClick={() => setCurrentStep(1)}
                   variant="outline"
                   className="!bg-transparent border-[#2A2A2A] text-[#9CA3AF] hover:text-white rounded-xl px-6 py-6"
                 >
