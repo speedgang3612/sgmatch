@@ -449,7 +449,7 @@ export default function AgencyListings() {
         );
         if (!branchRes.ok) return;
         const branchData = await branchRes.json();
-        setMyBranches(branchData.items ?? []);
+        setMyBranches((branchData.items ?? []).filter((b: { verified?: string }) => b.verified !== 'rejected'));
       } catch (e) {
         console.error('지사 목록 불러오기 실패:', e);
       }
