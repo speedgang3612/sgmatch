@@ -5,7 +5,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { client } from "@/lib/api";
 
 interface JobListing {
   id: number;
@@ -15,6 +14,7 @@ interface JobListing {
   title: string;
   conditions: string;
   promotion: string;
+  platform?: string;
   motorcycle: string;
   settlement: string;
   work_time: string;
@@ -62,6 +62,11 @@ const fallbackJobs: JobListing[] = [
   },
 ];
 
+/** "-" 기준 뒤 텍스트만 추출 (회사명 블라인드 처리) */
+function getBlindName(name: string): string {
+  return name.includes('-') ? name.split('-').slice(1).join('-') : name;
+}
+
 function parseConditions(conditions: string): string[] {
   try {
     return JSON.parse(conditions);
@@ -80,14 +85,12 @@ export default function JobListings() {
     const fetchJobs = async () => {
       try {
         setLoading(true);
-        // job_listings is create_only=true, use queryAll to get all users' listings
-        const response = await client.entities.job_listings.queryAll({
-          query: {},
-          sort: '-created_at',
-          limit: 50,
-          skip: 0,
-        });
-        const items = response?.data?.items;
+        const res = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL ?? ''}/api/v1/entities/job_listings/all?sort=-created_at&limit=50&skip=0`
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const items = data?.items;
         if (items && items.length > 0) {
           setJobs(items as JobListing[]);
         } else {
@@ -194,11 +197,16 @@ export default function JobListings() {
                       >
                         {job.status}
                       </span>
-                      <span className="text-[#9CA3AF] text-xs">{job.region}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[#9CA3AF] text-xs">{job.region}</span>
+                        <span className="text-xs text-[#6B7280] bg-[#1A1A1A] border border-[#2A2A2A] px-2 py-0.5 rounded-full">
+                          {getBlindName(job.agency_name)}
+                        </span>
+                      </div>
                     </div>
 
                     <h3 className="text-lg font-bold mb-4 group-hover:text-[#E63946] transition-colors">
-                      {job.title}
+                      {getBlindName(job.title)}
                     </h3>
 
                     <div className="flex flex-wrap gap-2 mb-4">

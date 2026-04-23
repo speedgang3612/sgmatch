@@ -70,6 +70,10 @@ const statusBadge: Record<string, string> = {
 
 const selectCls = "text-white hover:bg-white/10 focus:bg-white/10 focus:text-white";
 
+/** "-" 기준 뒤 텍스트만 추출 (회사명 블라인드 처리) */
+const getBlindName = (name: string) =>
+  name.includes('-') ? name.split('-').slice(1).join('-') : name;
+
 // ──────────────────────────────────────────
 // 공고 등록 모달
 // ──────────────────────────────────────────
@@ -77,9 +81,10 @@ interface NewListingModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  myBranches: { id: number; name: string }[];
 }
 
-function NewListingModal({ isOpen, onClose, onSuccess }: NewListingModalProps) {
+function NewListingModal({ isOpen, onClose, onSuccess, myBranches }: NewListingModalProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,6 +98,13 @@ function NewListingModal({ isOpen, onClose, onSuccess }: NewListingModalProps) {
   const [workTime, setWorkTime] = useState("");
   const [status, setStatus] = useState("모집중 ✅"); // 기본값: 이모지 포함
   const [platform, setPlatform] = useState("");  // 플랫폼 선택 상태
+
+  // 지사명 + 플랫폼 선택 시 공고 제목 자동 생성
+  useEffect(() => {
+    if (agencyName && platform) {
+      setTitle(`${getBlindName(agencyName)} ${platform} 라이더 모집중`);
+    }
+  }, [agencyName, platform]);
 
   const cityData = cities.find((c) => c.name === city);
 
@@ -172,12 +184,24 @@ function NewListingModal({ isOpen, onClose, onSuccess }: NewListingModalProps) {
             <label className="text-[#9CA3AF] text-sm mb-1.5 flex items-center gap-1.5 block">
               <Building2 size={14} /> 지사명 <span className="text-[#E63946]">*</span>
             </label>
-            <Input
-              placeholder="예: 마포 라이더스"
-              value={agencyName}
-              onChange={(e) => setAgencyName(e.target.value)}
-              className="bg-[#111111] border-[#2A2A2A] text-white rounded-xl"
-            />
+            <Select value={agencyName} onValueChange={setAgencyName}>
+              <SelectTrigger className="bg-[#111111] border-[#2A2A2A] text-white rounded-xl">
+                <SelectValue placeholder="내 지사 선택" />
+              </SelectTrigger>
+              <SelectContent className="!bg-[#1A1A1A] border-[#2A2A2A] text-white">
+                {myBranches.length === 0 ? (
+                  <SelectItem value="__none__" disabled className={selectCls}>
+                    등록된 지사가 없습니다
+                  </SelectItem>
+                ) : (
+                  myBranches.map((b) => (
+                    <SelectItem key={b.id} value={b.name} className={selectCls}>
+                      {getBlindName(b.name)}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* 공고 제목 */}
@@ -186,7 +210,7 @@ function NewListingModal({ isOpen, onClose, onSuccess }: NewListingModalProps) {
               <ClipboardList size={14} /> 공고 제목 <span className="text-[#E63946]">*</span>
             </label>
             <Input
-              placeholder="예: 마포구 주간 라이더 모집"
+              placeholder="지사 + 플랫폼 선택 시 자동 생성됩니다"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="bg-[#111111] border-[#2A2A2A] text-white rounded-xl"
@@ -395,6 +419,35 @@ export default function AgencyListings() {
     checkVerified();
   }, [session]);
 
+  // 내 지사 목록 fetch (공고 등록 드롭다운용)
+  const [myBranches, setMyBranches] = useState<{ id: number; name: string }[]>([]);
+  useEffect(() => {
+    const fetchMyBranches = async () => {
+      const token = session?.access_token;
+      if (!token) return;
+      try {
+        const compRes = await fetch(
+          `${getAPIBaseURL()}/api/v1/entities/companies?limit=1`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!compRes.ok) return;
+        const compData = await compRes.json();
+        const comp = compData.items?.[0];
+        if (!comp) return;
+        const branchRes = await fetch(
+          `${getAPIBaseURL()}/api/v1/entities/agency_profiles?query=${encodeURIComponent(JSON.stringify({ company_id: comp.id }))}&limit=50`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!branchRes.ok) return;
+        const branchData = await branchRes.json();
+        setMyBranches(branchData.items ?? []);
+      } catch (e) {
+        console.error('지사 목록 불러오기 실패:', e);
+      }
+    };
+    fetchMyBranches();
+  }, [session]);
+
   const handleNewListing = () => {
     if (!agencyVerified) {
       setShowVerifyGate(true);
@@ -587,6 +640,7 @@ export default function AgencyListings() {
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         onSuccess={fetchListings}
+        myBranches={myBranches}
       />
 
       {/* 인증 미완료 안내 모달 */}
