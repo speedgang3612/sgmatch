@@ -85,6 +85,7 @@ interface NewListingModalProps {
 }
 
 function NewListingModal({ isOpen, onClose, onSuccess, myBranches }: NewListingModalProps) {
+  const { session } = useAuth(); // Supabase session 토큰
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -122,25 +123,33 @@ function NewListingModal({ isOpen, onClose, onSuccess, myBranches }: NewListingM
     setSaving(true);
     setError(null);
     try {
-      // SDK 대신 axios 직접 호출 → Authorization 헤더로 JWT 전송
-      await axios.post(
+      // Supabase session 토큰 사용 (localStorage 의존 제거)
+      const token = session?.access_token;
+      if (!token) throw new Error("인증 토큰 없음 - 다시 로그인해주세요.");
+      const res = await fetch(
         `${getAPIBaseURL()}/api/v1/entities/job_listings`,
         {
-          agency_name: agencyName,
-          title,
-          region: `${city} ${district}`,
-          sub_region: district,
-          conditions: "[]",
-          promotion,
-          platform,
-          motorcycle,
-          settlement,
-          work_time: workTime,
-          status,
-          // created_at은 백엔드 service에서 자동 설정 (타입 불일치 방지)
-        },
-        { headers: getAuthHeaders() }
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            agency_name: agencyName,
+            title,
+            region: `${city} ${district}`,
+            sub_region: district,
+            conditions: "[]",
+            promotion,
+            platform,
+            motorcycle,
+            settlement,
+            work_time: workTime,
+            status,
+          }),
+        }
       );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       reset();
       onSuccess();
       onClose();
