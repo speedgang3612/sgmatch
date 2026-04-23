@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,19 +33,8 @@ import MatchStatusView from "@/components/MatchStatusView";
 import MatchModal from "@/components/MatchModal";
 import Logo from "@/components/Logo";
 import AddBranchModal from "@/components/AddBranchModal";
-import { client } from "@/lib/api";
 import { getAPIBaseURL } from "@/lib/config";
 import { useAuth } from "@/contexts/AuthContext";
-
-// 인증 헤더가 포함된 API 호출 헬퍼
-const authFetch = async (path: string) => {
-  const token = localStorage.getItem('access_token');
-  const res = await fetch(`${getAPIBaseURL()}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-};
 import {
   agencyNotifications,
   MatchRecord,
@@ -111,7 +100,14 @@ interface Rider {
 export default function AgencyDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
+
+  // 최신 Supabase 토큰을 ref로 관리 (stale 클로저 방지)
+  const tokenRef = useRef<string | null>(null);
+  useEffect(() => {
+    tokenRef.current = session?.access_token ?? null;
+  }, [session]);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedCity, setSelectedCity] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
@@ -147,7 +143,15 @@ export default function AgencyDashboard() {
     if (!confirm(`"${branchName}" 지사를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
     setDeletingId(branchId);
     try {
-      await client.entities.agency_profiles.delete({ id: branchId });
+      const token = tokenRef.current;
+      const res = await fetch(
+        `${getAPIBaseURL()}/api/v1/entities/agency_profiles/${branchId}`,
+        {
+          method: "DELETE",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await refreshBranches();
     } catch (err) {
       console.error('지사 삭제 실패:', err);
@@ -162,13 +166,14 @@ export default function AgencyDashboard() {
     const fetchRiders = async () => {
       try {
         setRidersLoading(true);
-        const response = await client.entities.rider_profiles.queryAll({
-          query: {},
-          sort: '-created_at',
-          limit: 100,
-          skip: 0,
-        });
-        const items = response?.data?.items;
+        const token = tokenRef.current;
+        const res = await fetch(
+          `${getAPIBaseURL()}/api/v1/entities/rider_profiles/all?sort=-created_at&limit=100&skip=0`,
+          { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const items = data?.items;
         if (items && items.length > 0) {
           const mapped: Rider[] = items.map((r: { name?: string; city?: string; district?: string; experience?: string; has_motorcycle?: boolean; rider_type?: string; status?: string }) => ({
             name: r.name || '',
@@ -196,13 +201,14 @@ export default function AgencyDashboard() {
   useEffect(() => {
     const fetchMatches = async () => {
       try {
-        const response = await client.entities.applications.queryAll({
-          query: {},
-          sort: '-created_at',
-          limit: 50,
-          skip: 0,
-        });
-        const items = response?.data?.items;
+        const token = tokenRef.current;
+        const res = await fetch(
+          `${getAPIBaseURL()}/api/v1/entities/applications?sort=-created_at&limit=50&skip=0`,
+          { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const items = data?.items;
         if (items && items.length > 0) {
           const mapped: MatchRecord[] = items.map((a: { id: number; rider_name?: string; agency_name?: string; status?: string; created_at?: string }) => ({
             id: String(a.id),
@@ -231,7 +237,7 @@ export default function AgencyDashboard() {
     }
   }, [latestMatch]);
 
-  // Fetch company and branches (fetch API 사용 — SDK는 Authorization 헤더 누락 문제)
+  // Fetch company and branches
   useEffect(() => {
     const fetchData = async () => {
       if (!user) {
@@ -240,19 +246,28 @@ export default function AgencyDashboard() {
       }
       try {
         setLoadingData(true);
+        const token = tokenRef.current;
+        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+
         // 현재 유저의 회사 조회
-        const companyData = await authFetch(
-          `/api/v1/entities/companies?sort=-created_at&limit=1`
+        const companyRes = await fetch(
+          `${getAPIBaseURL()}/api/v1/entities/companies?sort=-created_at&limit=1`,
+          { headers }
         );
+        if (!companyRes.ok) throw new Error(`HTTP ${companyRes.status}`);
+        const companyData = await companyRes.json();
         const companyItems = companyData?.items;
         if (companyItems && companyItems.length > 0) {
           const comp = companyItems[0] as Company;
           setCompany(comp);
 
           // 해당 회사의 지사 목록 조회
-          const branchData = await authFetch(
-            `/api/v1/entities/agency_profiles?query=${encodeURIComponent(JSON.stringify({ company_id: comp.id }))}&sort=-created_at&limit=50`
+          const branchRes = await fetch(
+            `${getAPIBaseURL()}/api/v1/entities/agency_profiles?query=${encodeURIComponent(JSON.stringify({ company_id: comp.id }))}&sort=-created_at&limit=50`,
+            { headers }
           );
+          if (!branchRes.ok) throw new Error(`HTTP ${branchRes.status}`);
+          const branchData = await branchRes.json();
           const branchItems = branchData?.items;
           if (branchItems) {
             setBranches(branchItems as Branch[]);
@@ -292,9 +307,13 @@ export default function AgencyDashboard() {
   const refreshBranches = async () => {
     if (!company) return;
     try {
-      const branchData = await authFetch(
-        `/api/v1/entities/agency_profiles?query=${encodeURIComponent(JSON.stringify({ company_id: company.id }))}&sort=-created_at&limit=50`
+      const token = tokenRef.current;
+      const res = await fetch(
+        `${getAPIBaseURL()}/api/v1/entities/agency_profiles?query=${encodeURIComponent(JSON.stringify({ company_id: company.id }))}&sort=-created_at&limit=50`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const branchData = await res.json();
       const branchItems = branchData?.items;
       if (branchItems) {
         setBranches(branchItems as Branch[]);
@@ -615,11 +634,12 @@ export default function AgencyDashboard() {
               type="agency"
               onStatusChange={() => {
                 // #14 — 수락/거절 후 매칭 데이터 재조회
-                client.entities.applications.queryAll({
-                  query: {}, sort: '-created_at', limit: 50, skip: 0,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                }).then((res: any) => {
-                  const items = res?.data?.items;
+                const token = tokenRef.current;
+                fetch(
+                  `${getAPIBaseURL()}/api/v1/entities/applications?sort=-created_at&limit=50&skip=0`,
+                  { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+                ).then((r) => r.json()).then((data) => {
+                  const items = data?.items;
                   if (items && items.length > 0) {
                     setMatches(items.map((a: { id: number; rider_name?: string; agency_name?: string; status?: string; created_at?: string }) => ({
                       id: String(a.id),
