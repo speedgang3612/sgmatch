@@ -242,6 +242,22 @@ async def update_agency_status(
         await db.commit()
         await db.refresh(agency)
 
+        # 이메일 알림 발송 (실패해도 API 응답에 영향 없음)
+        try:
+            from services.email import (
+                get_user_email_by_id,
+                send_approval_email,
+                send_rejection_email,
+            )
+            to_email = await get_user_email_by_id(agency.user_id)
+            if to_email:
+                if data.verified == "approved":
+                    await send_approval_email(to_email, agency.name)
+                elif data.verified == "rejected":
+                    await send_rejection_email(to_email, agency.name)
+        except Exception as email_exc:
+            logger.warning("이메일 알림 발송 실패 (무시): %s", email_exc)
+
         logger.info(f"Admin updated agency {agency_id} verified={data.verified}")
         return {
             "message": "Agency status updated",
