@@ -153,13 +153,13 @@ export default function LoginPage() {
             배달 지사 매칭 플랫폼 #1
           </span>
           <h1 className="text-5xl xl:text-6xl font-black text-white leading-[1.1] mb-6 tracking-tight">
-            빠르게 연결되는<br />
-            <span className="text-[#E63946]">스피드갱</span><br />
-            매칭 서비스
+            Connect Faster with<br />
+            <span className="text-[#E63946]">SG</span><br />
+            Matching Service
           </h1>
           <p className="text-[#9CA3AF] text-lg leading-relaxed max-w-sm">
-            검증된 지사와 라이더를 연결합니다.<br />
-            2분 안에 가입하고 바로 시작하세요.
+            Connecting verified agencies and riders.<br />
+            Sign up in 2 minutes and get started.
           </p>
 
           {/* 통계 배지 */}
