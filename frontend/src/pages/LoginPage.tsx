@@ -153,7 +153,7 @@ export default function LoginPage() {
             배달 지사 매칭 플랫폼 #1
           </span>
           <h1 className="text-5xl xl:text-6xl font-black text-white leading-[1.1] mb-6 tracking-tight">
-            Connect Faster with<br />
+            빠르게 연결되는<br />
             <span className="text-[#E63946]">SG</span><br />
             Matching Service
           </h1>
